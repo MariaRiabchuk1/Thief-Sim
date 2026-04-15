@@ -14,6 +14,7 @@ struct District: Identifiable {
     let hackSpeed: Double
     let hasPatrol: Bool
     let timeLimit: Int?
+    let unlockPrice: Int // Ціна розблокування
 }
 
 struct Upgrade: Identifiable {

@@ -4,28 +4,57 @@ import WatchKit
 // MARK: - Screens
 struct MapScreen: View {
     @ObservedObject var manager: GameManager
+    
     var body: some View {
         VStack(spacing: 5) {
+            // HUD
             HStack {
                 VStack(alignment: .leading) {
                     Text("$\(manager.totalMoney)").foregroundColor(.yellow).bold()
-                    Text(manager.playerRank).font(.system(size: 8)).foregroundColor(.blue).italic()
+                    Text(manager.playerRank).font(.system(size: 7)).foregroundColor(.blue).italic()
                 }
                 Spacer()
                 Button(action: { manager.gameState = .shop }) { Image(systemName: "cart.fill").foregroundColor(.white) }
                 .buttonStyle(.plain).padding(5).background(Color.blue.opacity(0.3)).cornerRadius(5)
             }.padding(.horizontal)
+            
             TabView(selection: $manager.selectedDistrictIndex) {
                 ForEach(0..<GameManager.districtsData.count, id: \.self) { i in
                     let district = GameManager.districtsData[i]
-                    VStack {
+                    VStack(spacing: 4) {
                         Text(district.name).font(.headline)
-                        Text("Куш: $\(district.reward)").foregroundColor(.green).font(.caption)
-                        HStack {
-                            if district.timeLimit != nil { Image(systemName: "timer").foregroundColor(.orange) }
-                            if district.hasPatrol { Image(systemName: "figure.walk").foregroundColor(.red).padding(.leading, 5) }
-                        }.font(.caption2)
-                        Button("ПОЧАТИ") { manager.startMission() }.buttonStyle(.borderedProminent).tint(.red)
+                        
+                        if manager.unlockedDistricts.contains(district.name) {
+                            // Район відкритий
+                            Text("Прогрес: Рівень \(manager.districtProgress[district.name, default: 0] + 1)")
+                                .font(.system(size: 8)).foregroundColor(.gray)
+                            
+                            HStack {
+                                Button(action: { manager.toggleBribe() }) {
+                                    HStack(spacing: 2) {
+                                        Image(systemName: manager.bribeActive ? "hand.thumbsup.fill" : "dollarsign.circle")
+                                        Text(manager.bribeActive ? "ПІДКУПЛЕНО" : "ПІДКУП $\(district.reward/4)")
+                                    }
+                                    .font(.system(size: 7, weight: .bold))
+                                    .foregroundColor(manager.bribeActive ? .green : .white)
+                                }
+                                .buttonStyle(.bordered).tint(manager.bribeActive ? .green : .gray)
+                            }
+                            
+                            Button("ПОЧАТИ") { manager.startMission() }
+                                .buttonStyle(.borderedProminent).tint(.red)
+                                .controlSize(.small)
+                        } else {
+                            // Район закритий
+                            VStack(spacing: 5) {
+                                Image(systemName: "lock.fill").foregroundColor(.orange)
+                                Text("Ціна: $\(district.unlockPrice)").font(.system(size: 10, weight: .bold))
+                                Button("РОЗБЛОКУВАТИ") { manager.unlockDistrict(district) }
+                                    .buttonStyle(.borderedProminent).tint(.orange)
+                                    .disabled(manager.totalMoney < district.unlockPrice)
+                                    .controlSize(.small)
+                            }
+                        }
                     }.tag(i)
                 }
             }.tabViewStyle(PageTabViewStyle())
@@ -47,12 +76,21 @@ struct ShopScreen: View {
                     ForEach(GameManager.accessoriesData) { acc in
                         HStack {
                             Text(acc.icon).font(.system(size: 14))
-                            VStack(alignment: .leading) { Text(acc.name).font(.system(size: 10, weight: .bold)); Text("$\(acc.price)").font(.system(size: 8)).foregroundColor(.yellow) }
+                            VStack(alignment: .leading) { 
+                                Text(acc.name).font(.system(size: 10, weight: .bold))
+                                if !manager.ownedAccessories.contains(acc.name) {
+                                    Text("$\(acc.price)").font(.system(size: 8)).foregroundColor(.yellow)
+                                }
+                            }
                             Spacer()
-                            Button(action: { manager.buyAccessory(acc) }) {
-                                if manager.ownedAccessories.contains(acc.name) { Image(systemName: manager.currentAccessoryName == acc.name ? "checkmark.circle.fill" : "circle").foregroundColor(.green) }
+                            Button(action: { 
+                                if manager.ownedAccessories.contains(acc.name) { manager.currentAccessoryName = acc.name }
+                                else { manager.buyAccessory(acc) }
+                            }) {
+                                if manager.currentAccessoryName == acc.name { Text("ОДЯГНУТО").font(.system(size: 7, weight: .bold)).foregroundColor(.green) }
+                                else if manager.ownedAccessories.contains(acc.name) { Text("ОДЯГТИ").font(.system(size: 7, weight: .bold)).foregroundColor(.white) }
                                 else { Text("КУПИТИ").font(.system(size: 7, weight: .bold)).padding(4).background(manager.totalMoney >= acc.price ? Color.blue : Color.gray).cornerRadius(4) }
-                            }.disabled(manager.currentAccessoryName == acc.name || (manager.totalMoney < acc.price && !manager.ownedAccessories.contains(acc.name)))
+                            }.buttonStyle(.plain).disabled(manager.currentAccessoryName == acc.name || (!manager.ownedAccessories.contains(acc.name) && manager.totalMoney < acc.price))
                         }
                     }
                 }
@@ -84,7 +122,7 @@ struct VentScreen: View {
                 else if obs.type == .turret { ZStack { Rectangle().fill(Color.red).frame(width: 10, height: 10); Rectangle().fill(Color.black).frame(width: 4, height: 4) }.position(x: CGFloat(obs.x), y: CGFloat(obs.y)) }
             }
             PlayerFigure(manager: manager).position(x: CGFloat(manager.ventPosition), y: 120)
-            VStack { HStack { Text("LEVEL \(manager.currentDistrictLevel + 1)").font(.system(size: 8, weight: .black)); Spacer(); Text("\(Int(manager.ventDistance))m").font(.system(size: 8, design: .monospaced)) }.padding(5); Spacer() }
+            VStack { HStack { Text("LVL \(manager.currentDistrictLevel + 1)").font(.system(size: 8, weight: .black)); Spacer(); Text("\(Int(manager.ventDistance))m").font(.system(size: 8, design: .monospaced)) }.padding(5); Spacer() }
         }
         .clipShape(RoundedRectangle(cornerRadius: 15))
         .focusable()
@@ -174,9 +212,14 @@ struct SuccessScreen: View {
         let reward = manager.isTreasureLevel ? manager.currentDistrict.reward * 2 : manager.currentDistrict.reward
         return VStack(spacing: 10) {
             Image(systemName: manager.isTreasureLevel ? "sparkles" : "banknote.fill").font(.largeTitle).foregroundColor(manager.isTreasureLevel ? .yellow : .green)
-            Text(manager.isTreasureLevel ? "ЗОЛОТИЙ КУШ!" : "УСПІХ!").font(.headline)
+            Text("УСПІХ!").font(.headline)
             Text("+ $\(reward)").foregroundColor(.green).bold()
-            Button("ВТІКТИ") { manager.totalMoney += reward; manager.totalEarnings += reward; manager.gameState = .map }.buttonStyle(.borderedProminent).tint(.green)
+            Button("ВТІКТИ") { 
+                manager.applyUpkeep()
+                manager.totalMoney += reward
+                manager.totalEarnings += reward
+                manager.gameState = .map 
+            }.buttonStyle(.borderedProminent).tint(.green)
         }
     }
 }
@@ -187,7 +230,11 @@ struct CaughtScreen: View {
         VStack(spacing: 10) {
             Image(systemName: "hand.raised.slash.fill").font(.largeTitle).foregroundColor(.red)
             Text("ВАС СПІЙМАНО!").font(.headline)
-            Button("ЗДАТИСЯ") { manager.totalMoney /= 2; manager.gameState = .map }.buttonStyle(.borderedProminent).tint(.red)
+            Button("ЗДАТИСЯ") { 
+                manager.applyUpkeep()
+                manager.totalMoney /= 2
+                manager.gameState = .map 
+            }.buttonStyle(.borderedProminent).tint(.red)
         }
     }
 }

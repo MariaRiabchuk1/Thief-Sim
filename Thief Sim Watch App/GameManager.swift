@@ -3,10 +3,11 @@ import WatchKit
 import Combine
 
 class GameManager: ObservableObject {
+    // Data
     static let districtsData = [
-        District(name: "Примістя", reward: 200, codeLength: 1, safeTolerance: 3.5, hackSpeed: 2.0, hasPatrol: false, timeLimit: nil),
-        District(name: "Центр", reward: 800, codeLength: 2, safeTolerance: 2.0, hackSpeed: 4.0, hasPatrol: true, timeLimit: 45),
-        District(name: "Острів", reward: 3000, codeLength: 3, safeTolerance: 1.2, hackSpeed: 6.0, hasPatrol: true, timeLimit: 30)
+        District(name: "Примістя", reward: 200, codeLength: 1, safeTolerance: 3.5, hackSpeed: 2.0, hasPatrol: false, timeLimit: nil, unlockPrice: 0),
+        District(name: "Центр", reward: 800, codeLength: 2, safeTolerance: 2.0, hackSpeed: 4.0, hasPatrol: true, timeLimit: 45, unlockPrice: 2000),
+        District(name: "Острів", reward: 3000, codeLength: 3, safeTolerance: 1.2, hackSpeed: 6.0, hasPatrol: true, timeLimit: 30, unlockPrice: 10000)
     ]
     
     static let shopItemsData = [
@@ -29,10 +30,17 @@ class GameManager: ObservableObject {
         Skin(name: "Неон", color: .green, price: 5000, description: "Кібер-злодій")
     ]
 
+    // States
     @Published var gameState: GameState = .map
     @Published var totalMoney = 0
     @Published var selectedDistrictIndex = 0
     @Published var totalEarnings = 0
+    
+    // Economy States
+    @Published var unlockedDistricts: Set<String> = ["Примістя"]
+    @Published var bribeActive = false
+    
+    // Customization State
     @Published var ownedUpgrades: Set<String> = []
     @Published var consumables: [String: Int] = ["Дим. шашка": 0, "ЕМІ": 0]
     @Published var ownedSkins: Set<String> = ["Класика"]
@@ -41,6 +49,7 @@ class GameManager: ObservableObject {
     @Published var currentAccessoryName: String? = nil
     @Published var districtProgress: [String: Int] = [:]
     
+    // Level States
     @Published var detectionLevel: Double = 0.0
     @Published var timeRemaining: Int = 0
     @Published var empActive = false
@@ -48,50 +57,76 @@ class GameManager: ObservableObject {
     @Published var isLockStuck = false
     @Published var stuckProgress = 0
     @Published var infoAlert: Upgrade? = nil
-    
     @Published var ventPosition: Double = 75.0
     @Published var ventDistance: Double = 0.0
     @Published var obstacles: [Obstacle] = []
     @Published var bullets: [Bullet] = []
     private var lastSpawnY: Double = -20.0
-    
     @Published var hackPosition: Double = 0.0
     @Published var hackDirection: Double = 1.0
-    
     @Published var combination: [Double] = []
     @Published var currentStep = 0
     @Published var crownValue: Double = 50.0
     @Published var lastFeedbackValue: Double = 50.0
     @Published var resonanceAlpha: Double = 0.0
-    
     @Published var isPatrolActive = false
     @Published var isPatrolWarning = false
     @Published var patrolTick = 0
     
+    // Helpers
     var currentDistrict: District { GameManager.districtsData[selectedDistrictIndex] }
     var currentSkin: Skin { GameManager.skinsData.first { $0.name == currentSkinName } ?? GameManager.skinsData[0] }
     var currentAccessory: Accessory? { GameManager.accessoriesData.first { $0.name == currentAccessoryName } }
     var currentDistrictLevel: Int { districtProgress[currentDistrict.name, default: 0] }
     
     var playerRank: String {
-        if totalEarnings < 1000 { return "Новачок" }
-        if totalEarnings < 5000 { return "Зломщик" }
-        if totalEarnings < 15000 { return "Майстер" }
-        return "Привид"
+        if totalEarnings < 1000 { return "Новачок (Підвал)" }
+        if totalEarnings < 5000 { return "Зломщик (Гараж)" }
+        if totalEarnings < 20000 { return "Майстер (Сховище)" }
+        return "Привид (Пентхаус)"
     }
 
     func getScaledTolerance() -> Double {
-        let base = currentDistrict.safeTolerance
+        var base = currentDistrict.safeTolerance
+        if bribeActive { base += 1.0 }
         let reduction = Double(currentDistrictLevel) * 0.15
         let nextBase = selectedDistrictIndex < 2 ? GameManager.districtsData[selectedDistrictIndex+1].safeTolerance : 0.5
         return max(base - reduction, nextBase + 0.1)
+    }
+
+    func unlockDistrict(_ district: District) {
+        if totalMoney >= district.unlockPrice {
+            totalMoney -= district.unlockPrice
+            unlockedDistricts.insert(district.name)
+            WKInterfaceDevice.current().play(.success)
+        }
+    }
+
+    func toggleBribe() {
+        let price = currentDistrict.reward / 4
+        if !bribeActive && totalMoney >= price {
+            totalMoney -= price
+            bribeActive = true
+            WKInterfaceDevice.current().play(.success)
+        } else if bribeActive {
+            bribeActive = false
+        }
+    }
+
+    func applyUpkeep() {
+        // Оренда та обладнання залежать від кількості відкритих районів
+        let upkeep = unlockedDistricts.count * 50
+        totalMoney = max(0, totalMoney - upkeep)
     }
 
     func startMission() {
         let district = currentDistrict
         detectionLevel = 0.0; empActive = false; isPatrolActive = false; isPatrolWarning = false
         patrolTick = 0; currentStep = 0; crownValue = 50.0; lastFeedbackValue = 50.0
-        timeRemaining = (district.timeLimit ?? 100) - (currentDistrictLevel * 2)
+        
+        let baseTime = district.timeLimit ?? 100
+        timeRemaining = (bribeActive ? baseTime + 20 : baseTime) - (currentDistrictLevel * 2)
+        
         isTreasureLevel = Int.random(in: 0...100) < 15
         ventDistance = 0; ventPosition = 75; obstacles = []; bullets = []; lastSpawnY = -20.0
         combination = (0..<district.codeLength).map { _ in Double.random(in: 10...90).rounded() }
@@ -108,11 +143,11 @@ class GameManager: ObservableObject {
     }
     
     private func handleDungeonTick() {
-        ventDistance += 0.25
-        for i in 0..<bullets.count { bullets[i].y += 4.0 }
+        ventDistance += 0.45
+        for i in 0..<bullets.count { bullets[i].y += 5.5 }
         bullets.removeAll { $0.y > 160 }
         for i in 0..<obstacles.count {
-            obstacles[i].y += 1.5
+            obstacles[i].y += 2.2
             if obstacles[i].type == .enemy {
                 obstacles[i].x += obstacles[i].speedX
                 if obstacles[i].x > 130 || obstacles[i].x < 20 { obstacles[i].speedX *= -1 }
@@ -180,7 +215,11 @@ class GameManager: ObservableObject {
         let boost = ownedUpgrades.contains("Стетоскоп") ? 1.5 : 1.0
         if abs(crownValue - combination[currentStep]) <= getScaledTolerance() * boost {
             WKInterfaceDevice.current().play(.success); currentStep += 1
-            if currentStep == combination.count { districtProgress[currentDistrict.name, default: 0] += 1; gameState = .success }
+            if currentStep == combination.count {
+                districtProgress[currentDistrict.name, default: 0] += 1
+                bribeActive = false // Скидаємо підкуп
+                gameState = .success
+            }
         } else {
             WKInterfaceDevice.current().play(.failure)
             detectionLevel += ownedUpgrades.contains("Відмички") ? 0.15 : 0.4
