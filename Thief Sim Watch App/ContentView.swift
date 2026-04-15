@@ -1,4 +1,5 @@
 import SwiftUI
+import Combine
 
 struct ContentView: View {
     @StateObject private var manager = GameManager()
@@ -9,20 +10,13 @@ struct ContentView: View {
     var body: some View {
         ZStack {
             switch manager.gameState {
-            case .map:
-                MapScreen(manager: manager)
-            case .shop:
-                ShopScreen(manager: manager)
-            case .ventCrawl:
-                VentScreen(manager: manager)
-            case .hacking:
-                HackingScreen(manager: manager)
-            case .safeCracking:
-                SafeScreen(manager: manager)
-            case .success:
-                SuccessScreen(manager: manager)
-            case .caught:
-                CaughtScreen(manager: manager)
+            case .map: MapScreen(manager: manager)
+            case .shop: ShopScreen(manager: manager)
+            case .ventCrawl: VentScreen(manager: manager)
+            case .hacking: HackingScreen(manager: manager)
+            case .safeCracking: SafeScreen(manager: manager)
+            case .success: SuccessScreen(manager: manager)
+            case .caught: CaughtScreen(manager: manager)
             }
         }
         .onReceive(globalTimer) { _ in manager.handleGlobalTick() }
