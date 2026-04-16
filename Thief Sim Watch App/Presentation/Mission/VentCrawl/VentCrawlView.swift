@@ -52,7 +52,7 @@ struct VentCrawlView: View {
             from: VentCrawlMetrics.laneMin,
             through: VentCrawlMetrics.laneMax,
             by: 0.005,
-            sensitivity: .medium,
+            sensitivity: .low,
             isContinuous: false,
             isHapticFeedbackEnabled: false
         )
