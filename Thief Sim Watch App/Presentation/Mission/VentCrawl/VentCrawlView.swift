@@ -20,7 +20,7 @@ struct VentCrawlView: View {
                 ObstacleView(obstacle: obs)
             }
             
-            PlayerFigureView(skinColor: viewModel.currentSkin.color, accessory: viewModel.currentAccessory)
+            PlayerFigureView(skinColor: viewModel.session.currentSkin.color, accessory: viewModel.session.currentAccessory)
                 .position(x: CGFloat(viewModel.ventPosition), y: 120)
             
             HUD(level: viewModel.currentDistrictLevel + 1, distance: Int(viewModel.ventDistance))

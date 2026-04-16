@@ -1,37 +1,22 @@
 import SwiftUI
 import Combine
 
-/// Main ViewModel coordinating game state and business logic.
+/// Coordinates mission flow and minigame state.
+///
+/// Progression (money, unlocks, owned items, customization) lives on
+/// `GameSession`. Re-publishes session changes so views observing the VM
+/// update when the session mutates.
 class GameViewModel: ObservableObject {
-    // Repositories & Services
-    private let dataRepository: GameDataRepository
-    private let economyService: EconomyService
+    let session: GameSession
+
+    // Dependencies
     private let missionService: MissionService
     private let hapticProvider: HapticProvider
-    
-    // Data (Static)
-    let districts: [District]
-    let shopItems: [Upgrade]
-    let skins: [Skin]
-    let accessories: [Accessory]
-    
+    private var sessionCancellable: AnyCancellable?
+
     // App State
     @Published var gameState: GameState = .map
-    @Published var totalMoney = 0
-    @Published var totalEarnings = 0
-    
-    // Progress State
-    @Published var unlockedDistricts: Set<String> = []
-    @Published var ownedUpgrades: Set<String> = []
-    @Published var consumables: [String: Int] = ["Дим. шашка": 0, "ЕМІ": 0]
-    @Published var ownedSkins: Set<String> = ["Класика"]
-    @Published var ownedAccessories: Set<String> = []
-    @Published var districtProgress: [String: Int] = [:]
-    
-    // Active Customization
-    @Published var currentSkinName = "Класика"
-    @Published var currentAccessoryName: String? = nil
-    
+
     // Mission State
     @Published var selectedDistrictIndex = 0
     @Published var bribeActive = false
@@ -42,7 +27,7 @@ class GameViewModel: ObservableObject {
     @Published var isLockStuck = false
     @Published var stuckProgress = 0
     @Published var infoAlert: Upgrade? = nil
-    
+
     // Minigame State
     @Published var ventPosition: Double = 75.0
     @Published var ventDistance: Double = 0.0
@@ -58,118 +43,74 @@ class GameViewModel: ObservableObject {
     @Published var isPatrolActive = false
     @Published var isPatrolWarning = false
     @Published var patrolTick = 0
-    
+
     private var lastSpawnY: Double = -20.0
-    
-    // Init
+
     init(
-        dataRepository: GameDataRepository = StaticGameDataRepository(),
-        economyService: EconomyService = GameEconomyService(),
+        session: GameSession = GameSession(),
         missionService: MissionService = GameMissionService(),
         hapticProvider: HapticProvider = WatchHapticProvider()
     ) {
-        self.dataRepository = dataRepository
-        self.economyService = economyService
+        self.session = session
         self.missionService = missionService
         self.hapticProvider = hapticProvider
-        
-        self.districts = dataRepository.getDistricts()
-        self.shopItems = dataRepository.getShopItems()
-        self.skins = dataRepository.getSkins()
-        self.accessories = dataRepository.getAccessories()
-        
-        // Initial unlocks
-        if let first = districts.first {
-            self.unlockedDistricts.insert(first.name)
+        self.sessionCancellable = session.objectWillChange.sink { [weak self] _ in
+            self?.objectWillChange.send()
         }
     }
-    
+
     // Computed Helpers
-    var currentDistrict: District { districts[selectedDistrictIndex] }
-    var currentSkin: Skin { skins.first { $0.name == currentSkinName } ?? skins[0] }
-    var currentAccessory: Accessory? { accessories.first { $0.name == currentAccessoryName } }
-    var currentDistrictLevel: Int { districtProgress[currentDistrict.name, default: 0] }
-    var playerRank: String { economyService.getPlayerRank(totalEarnings: totalEarnings) }
-    
-    // Economy Actions
+    var currentDistrict: District { session.districts[selectedDistrictIndex] }
+    var currentDistrictLevel: Int { session.level(of: currentDistrict) }
+
+    // Map Actions
+    func openShop() {
+        gameState = .shop
+    }
+
+    func closeShop() {
+        gameState = .map
+    }
+
     func unlockDistrict(_ district: District) {
-        guard economyService.canUnlockDistrict(totalMoney: totalMoney, district: district) else { return }
-        totalMoney -= district.unlockPrice
-        unlockedDistricts.insert(district.name)
-        hapticProvider.play(.success)
+        session.unlockDistrict(district)
     }
 
     func toggleBribe() {
-        let price = economyService.calculateBribePrice(reward: currentDistrict.reward)
-        if !bribeActive && totalMoney >= price {
-            totalMoney -= price
-            bribeActive = true
-            hapticProvider.play(.success)
-        } else if bribeActive {
+        if bribeActive {
             bribeActive = false
+        } else if session.payBribe(for: currentDistrict) {
+            bribeActive = true
         }
-    }
-
-    func applyUpkeep() {
-        let upkeep = economyService.getUpkeepCost(unlockedDistrictsCount: unlockedDistricts.count)
-        totalMoney = max(0, totalMoney - upkeep)
-    }
-    
-    func buySkin(_ skin: Skin) {
-        guard economyService.canBuyItem(totalMoney: totalMoney, price: skin.price) else { return }
-        totalMoney -= skin.price
-        ownedSkins.insert(skin.name)
-        currentSkinName = skin.name
-        hapticProvider.play(.success)
-    }
-    
-    func buyAccessory(_ acc: Accessory) {
-        guard economyService.canBuyItem(totalMoney: totalMoney, price: acc.price) else { return }
-        totalMoney -= acc.price
-        ownedAccessories.insert(acc.name)
-        currentAccessoryName = acc.name
-        hapticProvider.play(.success)
-    }
-    
-    func buyUpgrade(_ item: Upgrade) {
-        guard economyService.canBuyItem(totalMoney: totalMoney, price: item.price) else { return }
-        totalMoney -= item.price
-        if item.isConsumable {
-            consumables[item.name, default: 0] += 1
-        } else {
-            ownedUpgrades.insert(item.name)
-        }
-        hapticProvider.play(.success)
     }
 
     // Mission Flow
     func startMission() {
         detectionLevel = 0.0; empActive = false; isPatrolActive = false; isPatrolWarning = false
         patrolTick = 0; currentStep = 0; crownValue = 50.0; lastFeedbackValue = 50.0
-        
+
         let baseTime = currentDistrict.timeLimit ?? 100
         timeRemaining = missionService.calculateTimeLimit(base: baseTime, bribeActive: bribeActive, level: currentDistrictLevel)
-        
+
         isTreasureLevel = missionService.shouldBeTreasureLevel()
         ventDistance = 0; ventPosition = 75; obstacles = []; bullets = []; lastSpawnY = -20.0
         combination = missionService.generateCombination(length: currentDistrict.codeLength)
         gameState = .ventCrawl
     }
-    
+
     func finishMission(success: Bool) {
-        applyUpkeep()
+        session.applyUpkeep()
         if success {
             let reward = isTreasureLevel ? currentDistrict.reward * 2 : currentDistrict.reward
-            totalMoney += reward
-            totalEarnings += reward
-            districtProgress[currentDistrict.name, default: 0] += 1
+            session.addReward(reward)
+            session.advanceProgress(in: currentDistrict)
         } else {
-            totalMoney /= 2
+            session.halveMoney()
         }
         bribeActive = false
         gameState = .map
     }
-    
+
     // Game Ticks
     func handleFastTick() {
         if gameState == .ventCrawl {
@@ -178,7 +119,7 @@ class GameViewModel: ObservableObject {
             handleHackingTick()
         }
     }
-    
+
     func handleGlobalTick() {
         guard gameState == .safeCracking else { return }
         patrolTick += 1
@@ -189,19 +130,19 @@ class GameViewModel: ObservableObject {
         if detectionLevel > 0.2 && patrolTick % 2 == 0 { hapticProvider.play(.click) }
         handlePatrolLogic()
     }
-    
+
     private func handleHackingTick() {
         let speedBoost = Double(currentDistrictLevel) * 0.5
         hackPosition += (currentDistrict.hackSpeed + speedBoost) * hackDirection
         if hackPosition > 55 || hackPosition < -55 { hackDirection *= -1 }
     }
-    
+
     private func handleVentCrawlTick() {
         ventDistance += 0.45
         // Update bullets
         for i in 0..<bullets.count { bullets[i].y += 5.5 }
         bullets.removeAll { $0.y > 160 }
-        
+
         // Update obstacles
         for i in 0..<obstacles.count {
             obstacles[i].y += 2.2
@@ -215,29 +156,29 @@ class GameViewModel: ObservableObject {
                     obstacles[i].lastShootTime = ventDistance
                 }
             }
-            
+
             // Collision detection
             let playerRect = CGRect(x: CGFloat(ventPosition - 6), y: 115, width: 12, height: 18)
             let obs = obstacles[i]
             let obsRect = CGRect(x: CGFloat(obs.x - obs.width/2.0), y: CGFloat(obs.y - 4.0), width: CGFloat(obs.width), height: 8.0)
             if playerRect.intersects(obsRect) { failMission() }
         }
-        
+
         // Bullet collisions
         for bullet in bullets {
             let playerRect = CGRect(x: CGFloat(ventPosition - 6), y: 115, width: 12, height: 18)
             if playerRect.contains(CGPoint(x: CGFloat(bullet.x), y: CGFloat(bullet.y))) { failMission() }
         }
-        
+
         obstacles.removeAll { $0.y > 160 }
-        
+
         // Spawn
         let spawnThreshold = 35.0 - Double(currentDistrictLevel) * 2.0
         if ventDistance - lastSpawnY > spawnThreshold {
             spawnObstacle()
             lastSpawnY = ventDistance
         }
-        
+
         // Finish condition
         let targetDistance = 100.0 + Double(currentDistrictLevel) * 10.0
         if ventDistance >= targetDistance {
@@ -245,7 +186,7 @@ class GameViewModel: ObservableObject {
             hapticProvider.play(.success)
         }
     }
-    
+
     private func spawnObstacle() {
         let rand = Int.random(in: 0...100)
         if rand < 30 {
@@ -258,7 +199,7 @@ class GameViewModel: ObservableObject {
             obstacles.append(Obstacle(x: side ? 35 : 115, y: -10, width: 70, type: .wall))
         }
     }
-    
+
     // Hacking Logic
     func performHack() {
         if abs(hackPosition) < 15 {
@@ -270,32 +211,31 @@ class GameViewModel: ObservableObject {
             if detectionLevel >= 1.0 { gameState = .caught }
         }
     }
-    
+
     func useEMP() {
-        guard consumables["ЕМІ", default: 0] > 0 else { return }
-        consumables["ЕМІ"]! -= 1
+        guard session.consume("ЕМІ") else { return }
         empActive = true
         gameState = .safeCracking
         hapticProvider.play(.success)
     }
-    
+
     // Safe Cracking Logic
     func handleSafeInput(_ value: Double) {
         let tolerance = missionService.calculateScaledTolerance(
             base: currentDistrict.safeTolerance,
             bribeActive: bribeActive,
             level: currentDistrictLevel,
-            minTolerance: districts.last?.safeTolerance ?? 0.5
+            minTolerance: session.districts.last?.safeTolerance ?? 0.5
         )
-        
+
         let target = combination.isEmpty ? 0 : (currentStep < combination.count ? combination[currentStep] : 0)
         let distance = abs(value - target)
-        let boost = ownedUpgrades.contains("Стетоскоп") ? 1.5 : 1.0
-        
+        let boost = session.ownedUpgrades.contains("Стетоскоп") ? 1.5 : 1.0
+
         withAnimation(.linear(duration: 0.1)) {
             resonanceAlpha = max(0, 1.0 - (distance / (12.0 * boost)))
         }
-        
+
         if floor(value) != floor(lastFeedbackValue) {
             if isPatrolActive {
                 detectionLevel += 0.4
@@ -311,19 +251,19 @@ class GameViewModel: ObservableObject {
         }
         if detectionLevel >= 1.0 { gameState = .caught }
     }
-    
+
     func tryCrackSafe() {
         if isPatrolActive || isLockStuck || combination.isEmpty || currentStep >= combination.count { return }
-        
+
         let tolerance = missionService.calculateScaledTolerance(
             base: currentDistrict.safeTolerance,
             bribeActive: bribeActive,
             level: currentDistrictLevel,
-            minTolerance: districts.last?.safeTolerance ?? 0.5
+            minTolerance: session.districts.last?.safeTolerance ?? 0.5
         )
-        
-        let boost = ownedUpgrades.contains("Стетоскоп") ? 1.5 : 1.0
-        
+
+        let boost = session.ownedUpgrades.contains("Стетоскоп") ? 1.5 : 1.0
+
         if abs(crownValue - combination[currentStep]) <= tolerance * boost {
             hapticProvider.play(.success)
             currentStep += 1
@@ -332,12 +272,12 @@ class GameViewModel: ObservableObject {
             }
         } else {
             hapticProvider.play(.failure)
-            detectionLevel += ownedUpgrades.contains("Відмички") ? 0.15 : 0.4
+            detectionLevel += session.ownedUpgrades.contains("Відмички") ? 0.15 : 0.4
             currentStep = 0
             if detectionLevel >= 1.0 { gameState = .caught }
         }
     }
-    
+
     private func handlePatrolLogic() {
         guard currentDistrict.hasPatrol && !empActive else { return }
         if !isPatrolActive && !isPatrolWarning {
@@ -354,15 +294,14 @@ class GameViewModel: ObservableObject {
             hapticProvider.play(.directionDown)
         }
     }
-    
+
     private func failMission() {
         gameState = .caught
         hapticProvider.play(.failure)
     }
-    
+
     func useSmokeBomb() {
-        guard consumables["Дим. шашка", default: 0] > 0 else { return }
-        consumables["Дим. шашка"]! -= 1
+        guard session.consume("Дим. шашка") else { return }
         withAnimation { detectionLevel = 0.0 }
         hapticProvider.play(.success)
     }

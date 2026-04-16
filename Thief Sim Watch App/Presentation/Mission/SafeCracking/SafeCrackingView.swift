@@ -19,7 +19,7 @@ struct SafeCrackingView: View {
                         isPatrolActive: viewModel.isPatrolActive,
                         detectionLevel: viewModel.detectionLevel,
                         isTreasureLevel: viewModel.isTreasureLevel,
-                        hasStethoscope: viewModel.ownedUpgrades.contains("Стетоскоп")
+                        hasStethoscope: viewModel.session.ownedUpgrades.contains("Стетоскоп")
                     )
                 }
             }
@@ -55,11 +55,11 @@ private struct Header: View {
                     .foregroundColor(viewModel.timeRemaining < 10 ? .red : .orange)
             }
             
-            if (viewModel.consumables["Дим. шашка"] ?? 0) > 0 {
+            if (viewModel.session.consumables["Дим. шашка"] ?? 0) > 0 {
                 Button(action: { viewModel.useSmokeBomb() }) {
                     HStack(spacing: 2) {
                         Image(systemName: "wind")
-                        Text("\(viewModel.consumables["Дим. шашка", default: 0])")
+                        Text("\(viewModel.session.consumables["Дим. шашка", default: 0])")
                             .font(.system(size: 8))
                     }
                 }

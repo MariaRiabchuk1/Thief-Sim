@@ -7,13 +7,13 @@ struct MapView: View {
     var body: some View {
         VStack(spacing: 5) {
             HUDView(
-                money: viewModel.totalMoney,
-                rank: viewModel.playerRank,
-                onShopTap: { viewModel.gameState = .shop }
+                money: viewModel.session.totalMoney,
+                rank: viewModel.session.playerRank,
+                onShopTap: { viewModel.openShop() }
             )
-            
+
             TabView(selection: $viewModel.selectedDistrictIndex) {
-                ForEach(0..<viewModel.districts.count, id: \.self) { index in
+                ForEach(0..<viewModel.session.districts.count, id: \.self) { index in
                     DistrictCard(index: index, viewModel: viewModel)
                         .tag(index)
                 }
@@ -29,8 +29,8 @@ private struct DistrictCard: View {
     @ObservedObject var viewModel: GameViewModel
     
     var body: some View {
-        let district = viewModel.districts[index]
-        let isUnlocked = viewModel.unlockedDistricts.contains(district.name)
+        let district = viewModel.session.districts[index]
+        let isUnlocked = viewModel.session.unlockedDistricts.contains(district.name)
         
         VStack(spacing: 4) {
             Text(district.name).font(.headline)
@@ -50,7 +50,7 @@ private struct UnlockedDistrictContent: View {
     
     var body: some View {
         VStack(spacing: 4) {
-            Text("Прогрес: Рівень \(viewModel.districtProgress[district.name, default: 0] + 1)")
+            Text("Прогрес: Рівень \(viewModel.session.districtProgress[district.name, default: 0] + 1)")
                 .font(.system(size: 8))
                 .foregroundColor(.gray)
             
@@ -86,7 +86,7 @@ private struct LockedDistrictContent: View {
             Button("РОЗБЛОКУВАТИ") { viewModel.unlockDistrict(district) }
                 .buttonStyle(.borderedProminent)
                 .tint(.orange)
-                .disabled(viewModel.totalMoney < district.unlockPrice)
+                .disabled(viewModel.session.totalMoney < district.unlockPrice)
                 .controlSize(.small)
         }
     }
