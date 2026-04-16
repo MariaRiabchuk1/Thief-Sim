@@ -2,16 +2,16 @@ import SwiftUI
 
 /// Main navigation screen showing available districts.
 struct MapView: View {
-    @ObservedObject var viewModel: GameViewModel
+    @ObservedObject var viewModel: MapViewModel
 
     var body: some View {
         VStack(spacing: 0) {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: -1) {
-                    Text("$\(viewModel.totalMoney)")
+                    Text("$\(viewModel.session.totalMoney)")
                         .font(.system(size: 13, weight: .bold))
                         .foregroundStyle(.yellow)
-                    Text(viewModel.playerRank)
+                    Text(viewModel.session.playerRank)
                         .font(.system(size: 8))
                         .foregroundStyle(.blue)
                         .italic()
@@ -25,14 +25,14 @@ struct MapView: View {
             .padding(.top, 6)
 
             TabView(selection: $viewModel.selectedDistrictIndex) {
-                ForEach(0..<viewModel.districts.count, id: \.self) { index in
+                ForEach(0..<viewModel.session.districts.count, id: \.self) { index in
                     DistrictCard(index: index, viewModel: viewModel)
                         .tag(index)
                 }
             }
             .tabViewStyle(PageTabViewStyle())
             .overlay(alignment: .topLeading) {
-                Button(action: { viewModel.gameState = .shop }) {
+                Button(action: { viewModel.openShop() }) {
                     Image(systemName: "cart.fill")
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(.white)
@@ -52,15 +52,15 @@ struct MapView: View {
 /// A card representing a single district in the map.
 private struct DistrictCard: View {
     let index: Int
-    @ObservedObject var viewModel: GameViewModel
-    
+    @ObservedObject var viewModel: MapViewModel
+
     var body: some View {
-        let district = viewModel.districts[index]
-        let isUnlocked = viewModel.unlockedDistricts.contains(district.name)
-        
+        let district = viewModel.session.districts[index]
+        let isUnlocked = viewModel.session.unlockedDistricts.contains(district.name)
+
         VStack(spacing: 4) {
             Text(district.name).font(.headline)
-            
+
             if isUnlocked {
                 UnlockedDistrictContent(district: district, viewModel: viewModel)
             } else {
@@ -72,14 +72,14 @@ private struct DistrictCard: View {
 
 private struct UnlockedDistrictContent: View {
     let district: District
-    @ObservedObject var viewModel: GameViewModel
-    
+    @ObservedObject var viewModel: MapViewModel
+
     var body: some View {
         VStack(spacing: 4) {
-            Text("Прогрес: Рівень \(viewModel.districtProgress[district.name, default: 0] + 1)")
+            Text("Прогрес: Рівень \(viewModel.session.districtProgress[district.name, default: 0] + 1)")
                 .font(.system(size: 8))
                 .foregroundColor(.gray)
-            
+
             Button(action: { viewModel.toggleBribe() }) {
                 HStack(spacing: 4) {
                     Image(systemName: viewModel.bribeActive ? "hand.thumbsup.fill" : "dollarsign.circle")
@@ -101,8 +101,8 @@ private struct UnlockedDistrictContent: View {
 
 private struct LockedDistrictContent: View {
     let district: District
-    @ObservedObject var viewModel: GameViewModel
-    
+    @ObservedObject var viewModel: MapViewModel
+
     var body: some View {
         VStack(spacing: 5) {
             Image(systemName: "lock.fill").foregroundColor(.orange)
@@ -110,7 +110,7 @@ private struct LockedDistrictContent: View {
             Button("РОЗБЛОКУВАТИ") { viewModel.unlockDistrict(district) }
                 .buttonStyle(.borderedProminent)
                 .tint(.orange)
-                .disabled(viewModel.totalMoney < district.unlockPrice)
+                .disabled(viewModel.session.totalMoney < district.unlockPrice)
                 .controlSize(.small)
         }
     }
