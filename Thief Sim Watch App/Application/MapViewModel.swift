@@ -16,8 +16,13 @@ final class MapViewModel: ObservableObject {
     var onStartMission: ((District, Bool) -> Void)?
     var onOpenShop: (() -> Void)?
 
+    private var cancellables = Set<AnyCancellable>()
+
     init(session: GameSession) {
         self.session = session
+        session.objectWillChange
+            .sink { [weak self] _ in self?.objectWillChange.send() }
+            .store(in: &cancellables)
     }
 
     var currentDistrict: District { session.districts[selectedDistrictIndex] }

@@ -12,8 +12,13 @@ final class ShopViewModel: ObservableObject {
 
     var onClose: (() -> Void)?
 
+    private var cancellables = Set<AnyCancellable>()
+
     init(session: GameSession) {
         self.session = session
+        session.objectWillChange
+            .sink { [weak self] _ in self?.objectWillChange.send() }
+            .store(in: &cancellables)
     }
 
     func close() {

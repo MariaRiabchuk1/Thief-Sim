@@ -1,57 +1,72 @@
 import SwiftUI
-import Combine
 
-/// Root view that handles navigation between game states.
+/// Root view that switches screens based on the app router.
+///
+/// Creates the session and non-mission view models once, wires navigation
+/// closures, and hands each screen its own view model. Mission-phase views
+/// build their own view models around the active `MissionCoordinator` and
+/// run their own timers.
 struct ContentView: View {
     @StateObject private var session: GameSession
-    @StateObject private var gameViewModel: GameViewModel
+    @StateObject private var router: AppRouter
     @StateObject private var mapViewModel: MapViewModel
     @StateObject private var shopViewModel: ShopViewModel
 
-    let fastTimer = Timer.publish(every: 0.05, on: .main, in: .common).autoconnect()
-    let globalTimer = Timer.publish(every: 1.0, on: .main, in: .common).autoconnect()
-
     init() {
         let session = GameSession()
-        let gameVM = GameViewModel(session: session)
+        let router = AppRouter()
         let mapVM = MapViewModel(session: session)
         let shopVM = ShopViewModel(session: session)
 
-        mapVM.onStartMission = { [weak gameVM] district, bribe in
-            gameVM?.startMission(district: district, bribeActive: bribe)
+        mapVM.onStartMission = { [weak session, weak router] district, bribe in
+            guard let session, let router else { return }
+            let coordinator = MissionCoordinator(
+                session: session,
+                router: router,
+                district: district,
+                bribeActive: bribe
+            )
+            router.activeMission = coordinator
+            coordinator.start()
         }
-        mapVM.onOpenShop = { [weak gameVM] in gameVM?.openShop() }
-        shopVM.onClose = { [weak gameVM] in gameVM?.closeShop() }
+        mapVM.onOpenShop = { [weak router] in router?.gameState = .shop }
+        shopVM.onClose = { [weak router] in router?.gameState = .map }
 
         _session = StateObject(wrappedValue: session)
-        _gameViewModel = StateObject(wrappedValue: gameVM)
+        _router = StateObject(wrappedValue: router)
         _mapViewModel = StateObject(wrappedValue: mapVM)
         _shopViewModel = StateObject(wrappedValue: shopVM)
     }
 
     var body: some View {
         ZStack {
-            Group {
-                switch gameViewModel.gameState {
-                case .map:
-                    MapView(viewModel: mapViewModel)
-                case .shop:
-                    ShopView(viewModel: shopViewModel)
-                case .ventCrawl:
-                    VentCrawlView(viewModel: gameViewModel)
-                case .hacking:
-                    HackingView(viewModel: gameViewModel)
-                case .safeCracking:
-                    SafeCrackingView(viewModel: gameViewModel)
-                case .success:
-                    SuccessView(viewModel: gameViewModel)
-                case .caught:
-                    CaughtView(viewModel: gameViewModel)
+            switch router.gameState {
+            case .map:
+                MapView(viewModel: mapViewModel)
+            case .shop:
+                ShopView(viewModel: shopViewModel)
+            case .ventCrawl:
+                if let mission = router.activeMission {
+                    VentCrawlView(coordinator: mission)
+                }
+            case .hacking:
+                if let mission = router.activeMission {
+                    HackingView(coordinator: mission)
+                }
+            case .safeCracking:
+                if let mission = router.activeMission {
+                    SafeCrackingView(coordinator: mission)
+                }
+            case .success:
+                if let mission = router.activeMission {
+                    SuccessView(coordinator: mission)
+                }
+            case .caught:
+                if let mission = router.activeMission {
+                    CaughtView(coordinator: mission)
                 }
             }
         }
-        .onReceive(fastTimer) { _ in gameViewModel.handleFastTick() }
-        .onReceive(globalTimer) { _ in gameViewModel.handleGlobalTick() }
         .alert(item: $shopViewModel.infoAlert) { item in
             Alert(
                 title: Text(item.name),

@@ -1,33 +1,41 @@
 import SwiftUI
+import Combine
 
 /// Minigame: crawling through the vent.
 struct VentCrawlView: View {
-    @ObservedObject var viewModel: GameViewModel
-    
+    @StateObject private var viewModel: VentCrawlViewModel
+
+    init(coordinator: MissionCoordinator) {
+        _viewModel = StateObject(wrappedValue: VentCrawlViewModel(coordinator: coordinator))
+    }
+
+    private let tick = Timer.publish(every: 0.05, on: .main, in: .common).autoconnect()
+
     var body: some View {
         ZStack {
             Color.black
             BackgroundGrid(distance: viewModel.ventDistance)
-            
+
             ForEach(viewModel.bullets) { bullet in
                 Rectangle()
                     .fill(Color.yellow)
                     .frame(width: 3, height: 3)
                     .position(x: CGFloat(bullet.x), y: CGFloat(bullet.y))
             }
-            
+
             ForEach(viewModel.obstacles) { obs in
                 ObstacleView(obstacle: obs)
             }
-            
+
             PlayerFigureView(skinColor: viewModel.session.currentSkin.color, accessory: viewModel.session.currentAccessory)
                 .position(x: CGFloat(viewModel.ventPosition), y: 120)
-            
-            HUD(level: viewModel.currentDistrictLevel + 1, distance: Int(viewModel.ventDistance))
+
+            HUD(level: viewModel.coordinator.level + 1, distance: Int(viewModel.ventDistance))
         }
         .clipShape(RoundedRectangle(cornerRadius: 15))
         .focusable()
         .digitalCrownRotation($viewModel.ventPosition, from: 15, through: 135, by: 1, sensitivity: .high, isContinuous: false, isHapticFeedbackEnabled: false)
+        .onReceive(tick) { _ in viewModel.tick() }
     }
 }
 
