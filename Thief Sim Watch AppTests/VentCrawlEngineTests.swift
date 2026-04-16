@@ -16,6 +16,7 @@ struct VentCrawlEngineTests {
         state.playerX = 0.5
         state.obstacles = [
             Obstacle(
+                id: 1,
                 x: 0.5,
                 y: VentCrawlMetrics.playerCenterY,
                 width: VentCrawlMetrics.enemyWidth,
@@ -37,6 +38,7 @@ struct VentCrawlEngineTests {
         state.playerX = 0.2
         state.obstacles = [
             Obstacle(
+                id: 1,
                 x: 0.85,
                 y: 0.1,
                 width: VentCrawlMetrics.enemyWidth,
@@ -57,7 +59,7 @@ struct VentCrawlEngineTests {
         state.lastSpawnProgress = state.progress
         state.playerX = 0.5
         state.bullets = [
-            Bullet(x: 0.5, y: VentCrawlMetrics.playerCenterY)
+            Bullet(id: 1, x: 0.5, y: VentCrawlMetrics.playerCenterY)
         ]
 
         let outcome = engine.step(state: &state, level: 0)
@@ -135,7 +137,7 @@ struct VentCrawlEngineTests {
         state.lastSpawnProgress = state.progress
         state.playerX = 0.2
         state.obstacles = [
-            Obstacle(x: 0.9, y: VentCrawlMetrics.offscreenY + 0.01, width: VentCrawlMetrics.enemyWidth, type: .wall)
+            Obstacle(id: 1, x: 0.9, y: VentCrawlMetrics.offscreenY + 0.01, width: VentCrawlMetrics.enemyWidth, type: .wall)
         ]
 
         _ = engine.step(state: &state, level: 0)

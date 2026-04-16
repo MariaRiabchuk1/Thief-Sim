@@ -2,7 +2,7 @@ import Foundation
 
 /// A district where missions can be performed.
 struct District: Identifiable, Equatable {
-    let id = UUID()
+    let id: DistrictID
     let name: String
     let reward: Int
     let codeLength: Int

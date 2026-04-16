@@ -18,6 +18,8 @@ struct VentCrawlState: Equatable {
     var obstacles: [Obstacle] = []
     var bullets: [Bullet] = []
     var lastSpawnProgress: Double = -0.2
+    var nextObstacleID: Int = 0
+    var nextBulletID: Int = 0
 }
 
 enum VentCrawlOutcome: Equatable {
@@ -119,9 +121,11 @@ final class GameVentCrawlEngine: VentCrawlEngine {
             if state.obstacles[i].type == .turret {
                 if state.progress - state.obstacles[i].lastShootTime > VentCrawlMetrics.turretCooldown {
                     let bullet = Bullet(
+                        id: state.nextBulletID,
                         x: state.obstacles[i].x,
                         y: state.obstacles[i].y + VentCrawlMetrics.turretBulletYOffset
                     )
+                    state.nextBulletID += 1
                     state.bullets.append(bullet)
                     state.obstacles[i].lastShootTime = state.progress
                 }
@@ -143,7 +147,8 @@ final class GameVentCrawlEngine: VentCrawlEngine {
         state.obstacles.removeAll { $0.y > VentCrawlMetrics.offscreenY }
 
         if state.progress - state.lastSpawnProgress > VentCrawlMetrics.spawnInterval(level: level) {
-            state.obstacles.append(spawnObstacle(level: level))
+            state.obstacles.append(spawnObstacle(id: state.nextObstacleID, level: level))
+            state.nextObstacleID += 1
             state.lastSpawnProgress = state.progress
         }
 
@@ -151,14 +156,15 @@ final class GameVentCrawlEngine: VentCrawlEngine {
         return .ongoing
     }
 
-    private func spawnObstacle(level: Int) -> Obstacle {
+    private func spawnObstacle(id: Int, level: Int) -> Obstacle {
         let rand = Int.random(in: 0...100, using: &rng)
         if rand < 30 {
             let x = Double.random(in: VentCrawlMetrics.spawnXMin...VentCrawlMetrics.spawnXMax, using: &rng)
-            return Obstacle(x: x, y: VentCrawlMetrics.spawnY, width: VentCrawlMetrics.turretWidth, type: .turret)
+            return Obstacle(id: id, x: x, y: VentCrawlMetrics.spawnY, width: VentCrawlMetrics.turretWidth, type: .turret)
         } else if rand < 60 {
             let x = Double.random(in: VentCrawlMetrics.spawnXMin...VentCrawlMetrics.spawnXMax, using: &rng)
             return Obstacle(
+                id: id,
                 x: x,
                 y: VentCrawlMetrics.spawnY,
                 width: VentCrawlMetrics.enemyWidth,
@@ -168,6 +174,7 @@ final class GameVentCrawlEngine: VentCrawlEngine {
         } else {
             let left = Bool.random(using: &rng)
             return Obstacle(
+                id: id,
                 x: left ? VentCrawlMetrics.wallXLeft : VentCrawlMetrics.wallXRight,
                 y: VentCrawlMetrics.spawnY,
                 width: VentCrawlMetrics.wallWidth,
