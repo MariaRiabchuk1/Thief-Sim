@@ -6,7 +6,38 @@ struct ShopView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            Header(money: viewModel.session.totalMoney) { viewModel.close() }
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: -1) {
+                    Text("$\(viewModel.session.totalMoney)")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(.yellow)
+                    Text(viewModel.session.playerRank)
+                        .font(.system(size: 8))
+                        .foregroundStyle(.blue)
+                        .italic()
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                }
+                Spacer()
+            }
+            .padding(.leading, 22)
+            .padding(.trailing, 44)
+            .padding(.top, 6)
+
+            HStack {
+                Button(action: { viewModel.close() }) {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .frame(width: 28, height: 28)
+                        .background(Color.blue.opacity(0.3), in: Circle())
+                        .contentShape(Circle())
+                }
+                .buttonStyle(.plain)
+                Spacer()
+            }
+            .padding(.leading, 4)
+            .padding(.top, 2)
 
             List {
                 Section(header: Text("АКСЕСУАРИ").font(.system(size: 8))) {
@@ -22,29 +53,7 @@ struct ShopView: View {
                 }
             }
         }
-    }
-}
-
-private struct Header: View {
-    let money: Int
-    let onBack: () -> Void
-
-    var body: some View {
-        HStack {
-            Text("$\(money)")
-                .font(.system(size: 10, weight: .bold, design: .monospaced))
-                .foregroundColor(.yellow)
-            Spacer()
-            Button(action: onBack) {
-                Text("НАЗАД")
-                    .font(.system(size: 9, weight: .medium))
-                    .foregroundColor(.blue)
-            }
-            .buttonStyle(.plain)
-        }
-        .padding(.horizontal, 12)
-        .padding(.top, 5)
-        .padding(.bottom, 2)
+        .ignoresSafeArea(.container, edges: .top)
     }
 }
 

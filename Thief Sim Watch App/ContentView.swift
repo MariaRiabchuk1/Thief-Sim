@@ -1,4 +1,5 @@
 import SwiftUI
+import Combine
 
 /// Root view that switches screens based on the app router.
 ///

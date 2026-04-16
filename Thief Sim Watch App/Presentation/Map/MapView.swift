@@ -5,12 +5,24 @@ struct MapView: View {
     @ObservedObject var viewModel: MapViewModel
 
     var body: some View {
-        VStack(spacing: 5) {
-            HUDView(
-                money: viewModel.session.totalMoney,
-                rank: viewModel.session.playerRank,
-                onShopTap: { viewModel.openShop() }
-            )
+        VStack(spacing: 0) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: -1) {
+                    Text("$\(viewModel.session.totalMoney)")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(.yellow)
+                    Text(viewModel.session.playerRank)
+                        .font(.system(size: 8))
+                        .foregroundStyle(.blue)
+                        .italic()
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                }
+                Spacer()
+            }
+            .padding(.leading, 22)
+            .padding(.trailing, 44)
+            .padding(.top, 6)
 
             TabView(selection: $viewModel.selectedDistrictIndex) {
                 ForEach(0..<viewModel.session.districts.count, id: \.self) { index in
@@ -19,7 +31,21 @@ struct MapView: View {
                 }
             }
             .tabViewStyle(PageTabViewStyle())
+            .overlay(alignment: .topLeading) {
+                Button(action: { viewModel.openShop() }) {
+                    Image(systemName: "cart.fill")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .frame(width: 28, height: 28)
+                        .background(Color.blue.opacity(0.3), in: Circle())
+                        .contentShape(Circle())
+                }
+                .buttonStyle(.plain)
+                .padding(.leading, 4)
+                .padding(.top, 2)
+            }
         }
+        .ignoresSafeArea(.container, edges: .top)
     }
 }
 
@@ -54,18 +80,16 @@ private struct UnlockedDistrictContent: View {
                 .font(.system(size: 8))
                 .foregroundColor(.gray)
 
-            HStack {
-                Button(action: { viewModel.toggleBribe() }) {
-                    HStack(spacing: 2) {
-                        Image(systemName: viewModel.bribeActive ? "hand.thumbsup.fill" : "dollarsign.circle")
-                        Text(viewModel.bribeActive ? "ПІДКУПЛЕНО" : "ПІДКУП $\(district.reward/4)")
-                    }
-                    .font(.system(size: 7, weight: .bold))
-                    .foregroundColor(viewModel.bribeActive ? .green : .white)
+            Button(action: { viewModel.toggleBribe() }) {
+                HStack(spacing: 4) {
+                    Image(systemName: viewModel.bribeActive ? "hand.thumbsup.fill" : "dollarsign.circle")
+                    Text(viewModel.bribeActive ? "ПІДКУПЛЕНО" : "ПІДКУП $\(district.reward/4)")
                 }
-                .buttonStyle(.bordered)
-                .tint(viewModel.bribeActive ? .green : .gray)
+                .foregroundColor(viewModel.bribeActive ? .green : .white)
             }
+            .buttonStyle(.bordered)
+            .tint(viewModel.bribeActive ? .green : .gray)
+            .controlSize(.small)
 
             Button("ПОЧАТИ") { viewModel.startMission() }
                 .buttonStyle(.borderedProminent)
