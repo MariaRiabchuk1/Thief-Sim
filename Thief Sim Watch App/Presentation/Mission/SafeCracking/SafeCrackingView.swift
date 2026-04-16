@@ -85,7 +85,7 @@ private struct Footer: View {
     var body: some View {
         VStack(spacing: 3) {
             HStack(spacing: 4) {
-                ForEach(0..<viewModel.currentDistrict.codeLength, id: \.self) { i in
+                ForEach(0..<(viewModel.activeDistrict?.codeLength ?? 0), id: \.self) { i in
                     Circle()
                         .fill(i < viewModel.currentStep ? Color.green : Color.gray)
                         .frame(width: 5, height: 5)

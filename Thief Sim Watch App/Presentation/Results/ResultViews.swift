@@ -5,8 +5,9 @@ struct SuccessView: View {
     @ObservedObject var viewModel: GameViewModel
     
     var body: some View {
-        let reward = viewModel.isTreasureLevel ? viewModel.currentDistrict.reward * 2 : viewModel.currentDistrict.reward
-        
+        let baseReward = viewModel.activeDistrict?.reward ?? 0
+        let reward = viewModel.isTreasureLevel ? baseReward * 2 : baseReward
+
         VStack(spacing: 10) {
             Image(systemName: viewModel.isTreasureLevel ? "sparkles" : "banknote.fill")
                 .font(.largeTitle)

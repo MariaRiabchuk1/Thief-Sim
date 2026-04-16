@@ -2,11 +2,11 @@ import SwiftUI
 
 /// Shop screen for buying gadgets and customization.
 struct ShopView: View {
-    @ObservedObject var viewModel: GameViewModel
-    
+    @ObservedObject var viewModel: ShopViewModel
+
     var body: some View {
         VStack(spacing: 0) {
-            Header(money: viewModel.session.totalMoney) { viewModel.closeShop() }
+            Header(money: viewModel.session.totalMoney) { viewModel.close() }
 
             List {
                 Section(header: Text("АКСЕСУАРИ").font(.system(size: 8))) {
@@ -28,7 +28,7 @@ struct ShopView: View {
 private struct Header: View {
     let money: Int
     let onBack: () -> Void
-    
+
     var body: some View {
         HStack {
             Text("$\(money)")
@@ -50,8 +50,8 @@ private struct Header: View {
 
 private struct AccessoryRow: View {
     let accessory: Accessory
-    @ObservedObject var viewModel: GameViewModel
-    
+    @ObservedObject var viewModel: ShopViewModel
+
     var body: some View {
         let isOwned = viewModel.session.ownedAccessories.contains(accessory.name)
         let isEquipped = viewModel.session.currentAccessoryName == accessory.name
@@ -66,8 +66,8 @@ private struct AccessoryRow: View {
             }
             Spacer()
             Button(action: {
-                if isOwned { viewModel.session.currentAccessoryName = accessory.name }
-                else { viewModel.session.buyAccessory(accessory) }
+                if isOwned { viewModel.equipAccessory(accessory) }
+                else { viewModel.buyAccessory(accessory) }
             }) {
                 ActionLabel(isEquipped: isEquipped, isOwned: isOwned, canAfford: viewModel.session.totalMoney >= accessory.price)
             }
@@ -79,8 +79,8 @@ private struct AccessoryRow: View {
 
 private struct UpgradeRow: View {
     let item: Upgrade
-    @ObservedObject var viewModel: GameViewModel
-    
+    @ObservedObject var viewModel: ShopViewModel
+
     var body: some View {
         let isOwned = viewModel.session.ownedUpgrades.contains(item.name)
         let count = viewModel.session.consumables[item.name, default: 0]
@@ -91,13 +91,13 @@ private struct UpgradeRow: View {
                 Text("$\(item.price)").font(.system(size: 8)).foregroundColor(.yellow)
             }
             Spacer()
-            Button(action: { viewModel.infoAlert = item }) {
+            Button(action: { viewModel.showInfo(item) }) {
                 Image(systemName: "info.circle").foregroundColor(.blue)
             }
             .buttonStyle(.plain)
             .padding(.trailing, 5)
 
-            Button(action: { viewModel.session.buyUpgrade(item) }) {
+            Button(action: { viewModel.buyUpgrade(item) }) {
                 Text(item.isConsumable ? "+\(count)" : (isOwned ? "КУПЛЕНО" : "КУПИТИ"))
                     .font(.system(size: 7, weight: .bold))
                     .padding(4)
@@ -113,7 +113,7 @@ private struct ActionLabel: View {
     let isEquipped: Bool
     let isOwned: Bool
     let canAfford: Bool
-    
+
     var body: some View {
         if isEquipped {
             Text("ОДЯГНУТО").font(.system(size: 7, weight: .bold)).foregroundColor(.green)

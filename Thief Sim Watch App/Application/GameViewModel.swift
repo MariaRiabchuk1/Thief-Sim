@@ -1,11 +1,12 @@
 import SwiftUI
 import Combine
 
-/// Coordinates mission flow and minigame state.
+/// Coordinates the mission flow and the three minigame phases.
 ///
-/// Progression (money, unlocks, owned items, customization) lives on
-/// `GameSession`. Re-publishes session changes so views observing the VM
-/// update when the session mutates.
+/// Progression lives on `GameSession`. Map- and shop-scoped state live on
+/// `MapViewModel` / `ShopViewModel`. What stays here: the current game
+/// screen, the active-mission snapshot, and all per-mission / per-minigame
+/// state (detection, patrol, dial, obstacles, etc.).
 class GameViewModel: ObservableObject {
     let session: GameSession
 
@@ -17,8 +18,8 @@ class GameViewModel: ObservableObject {
     // App State
     @Published var gameState: GameState = .map
 
-    // Mission State
-    @Published var selectedDistrictIndex = 0
+    // Active Mission
+    @Published var activeDistrict: District?
     @Published var bribeActive = false
     @Published var detectionLevel: Double = 0.0
     @Published var timeRemaining: Int = 0
@@ -26,7 +27,6 @@ class GameViewModel: ObservableObject {
     @Published var isTreasureLevel = false
     @Published var isLockStuck = false
     @Published var stuckProgress = 0
-    @Published var infoAlert: Upgrade? = nil
 
     // Minigame State
     @Published var ventPosition: Double = 75.0
@@ -59,11 +59,13 @@ class GameViewModel: ObservableObject {
         }
     }
 
-    // Computed Helpers
-    var currentDistrict: District { session.districts[selectedDistrictIndex] }
-    var currentDistrictLevel: Int { session.level(of: currentDistrict) }
+    var currentDistrict: District? { activeDistrict }
+    var currentDistrictLevel: Int {
+        guard let d = activeDistrict else { return 0 }
+        return session.level(of: d)
+    }
 
-    // Map Actions
+    // Screen Routing
     func openShop() {
         gameState = .shop
     }
@@ -72,42 +74,36 @@ class GameViewModel: ObservableObject {
         gameState = .map
     }
 
-    func unlockDistrict(_ district: District) {
-        session.unlockDistrict(district)
-    }
-
-    func toggleBribe() {
-        if bribeActive {
-            bribeActive = false
-        } else if session.payBribe(for: currentDistrict) {
-            bribeActive = true
-        }
-    }
-
     // Mission Flow
-    func startMission() {
+    func startMission(district: District, bribeActive: Bool) {
+        activeDistrict = district
+        self.bribeActive = bribeActive
         detectionLevel = 0.0; empActive = false; isPatrolActive = false; isPatrolWarning = false
         patrolTick = 0; currentStep = 0; crownValue = 50.0; lastFeedbackValue = 50.0
 
-        let baseTime = currentDistrict.timeLimit ?? 100
-        timeRemaining = missionService.calculateTimeLimit(base: baseTime, bribeActive: bribeActive, level: currentDistrictLevel)
+        let level = session.level(of: district)
+        let baseTime = district.timeLimit ?? 100
+        timeRemaining = missionService.calculateTimeLimit(base: baseTime, bribeActive: bribeActive, level: level)
 
         isTreasureLevel = missionService.shouldBeTreasureLevel()
         ventDistance = 0; ventPosition = 75; obstacles = []; bullets = []; lastSpawnY = -20.0
-        combination = missionService.generateCombination(length: currentDistrict.codeLength)
+        combination = missionService.generateCombination(length: district.codeLength)
         gameState = .ventCrawl
     }
 
     func finishMission(success: Bool) {
         session.applyUpkeep()
-        if success {
-            let reward = isTreasureLevel ? currentDistrict.reward * 2 : currentDistrict.reward
-            session.addReward(reward)
-            session.advanceProgress(in: currentDistrict)
-        } else {
-            session.halveMoney()
+        if let district = activeDistrict {
+            if success {
+                let reward = isTreasureLevel ? district.reward * 2 : district.reward
+                session.addReward(reward)
+                session.advanceProgress(in: district)
+            } else {
+                session.halveMoney()
+            }
         }
         bribeActive = false
+        activeDistrict = nil
         gameState = .map
     }
 
@@ -132,12 +128,14 @@ class GameViewModel: ObservableObject {
     }
 
     private func handleHackingTick() {
+        guard let district = activeDistrict else { return }
         let speedBoost = Double(currentDistrictLevel) * 0.5
-        hackPosition += (currentDistrict.hackSpeed + speedBoost) * hackDirection
+        hackPosition += (district.hackSpeed + speedBoost) * hackDirection
         if hackPosition > 55 || hackPosition < -55 { hackDirection *= -1 }
     }
 
     private func handleVentCrawlTick() {
+        guard activeDistrict != nil else { return }
         ventDistance += 0.45
         // Update bullets
         for i in 0..<bullets.count { bullets[i].y += 5.5 }
@@ -157,14 +155,12 @@ class GameViewModel: ObservableObject {
                 }
             }
 
-            // Collision detection
             let playerRect = CGRect(x: CGFloat(ventPosition - 6), y: 115, width: 12, height: 18)
             let obs = obstacles[i]
             let obsRect = CGRect(x: CGFloat(obs.x - obs.width/2.0), y: CGFloat(obs.y - 4.0), width: CGFloat(obs.width), height: 8.0)
             if playerRect.intersects(obsRect) { failMission() }
         }
 
-        // Bullet collisions
         for bullet in bullets {
             let playerRect = CGRect(x: CGFloat(ventPosition - 6), y: 115, width: 12, height: 18)
             if playerRect.contains(CGPoint(x: CGFloat(bullet.x), y: CGFloat(bullet.y))) { failMission() }
@@ -172,14 +168,12 @@ class GameViewModel: ObservableObject {
 
         obstacles.removeAll { $0.y > 160 }
 
-        // Spawn
         let spawnThreshold = 35.0 - Double(currentDistrictLevel) * 2.0
         if ventDistance - lastSpawnY > spawnThreshold {
             spawnObstacle()
             lastSpawnY = ventDistance
         }
 
-        // Finish condition
         let targetDistance = 100.0 + Double(currentDistrictLevel) * 10.0
         if ventDistance >= targetDistance {
             gameState = .hacking
@@ -221,8 +215,9 @@ class GameViewModel: ObservableObject {
 
     // Safe Cracking Logic
     func handleSafeInput(_ value: Double) {
+        guard let district = activeDistrict else { return }
         let tolerance = missionService.calculateScaledTolerance(
-            base: currentDistrict.safeTolerance,
+            base: district.safeTolerance,
             bribeActive: bribeActive,
             level: currentDistrictLevel,
             minTolerance: session.districts.last?.safeTolerance ?? 0.5
@@ -253,10 +248,11 @@ class GameViewModel: ObservableObject {
     }
 
     func tryCrackSafe() {
+        guard let district = activeDistrict else { return }
         if isPatrolActive || isLockStuck || combination.isEmpty || currentStep >= combination.count { return }
 
         let tolerance = missionService.calculateScaledTolerance(
-            base: currentDistrict.safeTolerance,
+            base: district.safeTolerance,
             bribeActive: bribeActive,
             level: currentDistrictLevel,
             minTolerance: session.districts.last?.safeTolerance ?? 0.5
@@ -279,7 +275,7 @@ class GameViewModel: ObservableObject {
     }
 
     private func handlePatrolLogic() {
-        guard currentDistrict.hasPatrol && !empActive else { return }
+        guard let district = activeDistrict, district.hasPatrol, !empActive else { return }
         if !isPatrolActive && !isPatrolWarning {
             if Int.random(in: 0...100) > 80 {
                 isPatrolWarning = true
