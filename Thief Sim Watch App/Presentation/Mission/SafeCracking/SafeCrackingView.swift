@@ -124,6 +124,36 @@ private struct StuckLockView: View {
     }
 }
 
+/// Clock-driven shake so it doesn't re-roll the offset on every crown tick.
+/// Kicks in only past a detection floor, so calm play is rock-steady.
+private struct TensionShake: ViewModifier {
+    let detectionLevel: Double
+    let active: Bool
+
+    func body(content: Content) -> some View {
+        let amplitude = max(0, (detectionLevel - 0.5) * 10)
+        if !active || amplitude == 0 {
+            content
+        } else {
+            TimelineView(.periodic(from: .now, by: 0.12)) { context in
+                let seed = Int(context.date.timeIntervalSinceReferenceDate * 10)
+                var rng = SeededShakeRNG(seed: UInt64(bitPattern: Int64(seed)))
+                let offset = CGFloat.random(in: -amplitude...amplitude, using: &rng)
+                content.offset(x: offset)
+            }
+        }
+    }
+}
+
+private struct SeededShakeRNG: RandomNumberGenerator {
+    var state: UInt64
+    init(seed: UInt64) { state = seed &* 6364136223846793005 &+ 1442695040888963407 }
+    mutating func next() -> UInt64 {
+        state = state &* 6364136223846793005 &+ 1442695040888963407
+        return state
+    }
+}
+
 private struct SafeDialView: View {
     let crownValue: Double
     let resonanceAlpha: Double
@@ -162,6 +192,6 @@ private struct SafeDialView: View {
                 .rotationEffect(.degrees(crownValue * 3.6))
         }
         .frame(width: 85, height: 85)
-        .offset(x: isPatrolActive ? 0 : CGFloat.random(in: CGFloat(-detectionLevel*5)...CGFloat(detectionLevel*5)))
+        .modifier(TensionShake(detectionLevel: detectionLevel, active: !isPatrolActive))
     }
 }

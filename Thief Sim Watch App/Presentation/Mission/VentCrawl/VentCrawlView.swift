@@ -2,6 +2,9 @@ import SwiftUI
 import Combine
 
 /// Minigame: crawling through the vent.
+///
+/// Maps the engine's normalized coordinates to actual view pixels via
+/// `GeometryReader`, so layout scales with the watch size.
 struct VentCrawlView: View {
     @StateObject private var viewModel: VentCrawlViewModel
 
@@ -12,42 +15,64 @@ struct VentCrawlView: View {
     private let tick = Timer.publish(every: 0.05, on: .main, in: .common).autoconnect()
 
     var body: some View {
-        ZStack {
-            Color.black
-            BackgroundGrid(distance: viewModel.ventDistance)
+        GeometryReader { geo in
+            let size = geo.size
+            ZStack(alignment: .topLeading) {
+                Color.black
+                BackgroundGrid(progress: viewModel.state.progress)
 
-            ForEach(viewModel.bullets) { bullet in
-                Rectangle()
-                    .fill(Color.yellow)
-                    .frame(width: 3, height: 3)
-                    .position(x: CGFloat(bullet.x), y: CGFloat(bullet.y))
+                ForEach(viewModel.state.bullets) { bullet in
+                    Rectangle()
+                        .fill(Color.yellow)
+                        .frame(width: 3, height: 3)
+                        .position(x: bullet.x * size.width, y: bullet.y * size.height)
+                }
+
+                ForEach(viewModel.state.obstacles) { obs in
+                    ObstacleView(obstacle: obs, size: size)
+                }
+
+                PlayerFigureView(
+                    skinColor: viewModel.session.currentSkin.color,
+                    accessory: viewModel.session.currentAccessory
+                )
+                .position(
+                    x: viewModel.state.playerX * size.width,
+                    y: VentCrawlMetrics.playerCenterY * size.height
+                )
+
+                HUD(level: viewModel.coordinator.level + 1, progress: viewModel.state.progress)
             }
-
-            ForEach(viewModel.obstacles) { obs in
-                ObstacleView(obstacle: obs)
-            }
-
-            PlayerFigureView(skinColor: viewModel.session.currentSkin.color, accessory: viewModel.session.currentAccessory)
-                .position(x: CGFloat(viewModel.ventPosition), y: 120)
-
-            HUD(level: viewModel.coordinator.level + 1, distance: Int(viewModel.ventDistance))
+            .frame(width: size.width, height: size.height)
+            .clipShape(RoundedRectangle(cornerRadius: 15))
         }
-        .clipShape(RoundedRectangle(cornerRadius: 15))
         .focusable()
-        .digitalCrownRotation($viewModel.ventPosition, from: 15, through: 135, by: 1, sensitivity: .high, isContinuous: false, isHapticFeedbackEnabled: false)
+        .digitalCrownRotation(
+            $viewModel.state.playerX,
+            from: VentCrawlMetrics.laneMin,
+            through: VentCrawlMetrics.laneMax,
+            by: 0.005,
+            sensitivity: .low,
+            isContinuous: false,
+            isHapticFeedbackEnabled: false
+        )
         .onReceive(tick) { _ in viewModel.tick() }
     }
 }
 
 private struct BackgroundGrid: View {
-    let distance: Double
+    let progress: Double
     var body: some View {
-        VStack(spacing: 30) {
-            ForEach(0..<6) { i in
-                Rectangle()
-                    .fill(Color.gray.opacity(0.1))
-                    .frame(height: 1)
-                    .offset(y: CGFloat((Int(distance * 20) % 30) + (i * 30)))
+        GeometryReader { geo in
+            let spacing = geo.size.height / 6
+            let offset = (progress * geo.size.height * 4).truncatingRemainder(dividingBy: spacing)
+            VStack(spacing: 0) {
+                ForEach(0..<6) { i in
+                    Rectangle()
+                        .fill(Color.gray.opacity(0.1))
+                        .frame(height: 1)
+                        .offset(y: CGFloat(i) * spacing + offset)
+                }
             }
         }
     }
@@ -55,12 +80,14 @@ private struct BackgroundGrid: View {
 
 private struct ObstacleView: View {
     let obstacle: Obstacle
+    let size: CGSize
+
     var body: some View {
         Group {
             if obstacle.type == .wall {
                 Rectangle()
                     .fill(Color.white.opacity(0.8))
-                    .frame(width: CGFloat(obstacle.width), height: 6)
+                    .frame(width: obstacle.width * size.width, height: 6)
             } else if obstacle.type == .enemy {
                 Rectangle()
                     .fill(Color.red)
@@ -72,19 +99,20 @@ private struct ObstacleView: View {
                 }
             }
         }
-        .position(x: CGFloat(obstacle.x), y: CGFloat(obstacle.y))
+        .position(x: obstacle.x * size.width, y: obstacle.y * size.height)
     }
 }
 
 private struct HUD: View {
     let level: Int
-    let distance: Int
+    let progress: Double
+
     var body: some View {
         VStack {
             HStack {
                 Text("LVL \(level)").font(.system(size: 8, weight: .black))
                 Spacer()
-                Text("\(distance)m").font(.system(size: 8, design: .monospaced))
+                Text("\(Int(progress * 100))%").font(.system(size: 8, design: .monospaced))
             }
             .padding(5)
             Spacer()
