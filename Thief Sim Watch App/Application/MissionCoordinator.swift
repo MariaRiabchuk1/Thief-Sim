@@ -52,8 +52,8 @@ final class MissionCoordinator: ObservableObject {
 
     var level: Int { session.level(of: district) }
     var minTolerance: Double { session.districts.last?.safeTolerance ?? 0.5 }
-    var hasStethoscope: Bool { session.ownedUpgrades.contains("Стетоскоп") }
-    var hasLockpicks: Bool { session.ownedUpgrades.contains("Відмички") }
+    var hasStethoscope: Bool { session.ownedUpgrades.contains(.stethoscope) }
+    var hasLockpicks: Bool { session.ownedUpgrades.contains(.lockpicks) }
 
     func start() {
         let baseTime = district.timeLimit ?? 100
@@ -77,13 +77,13 @@ final class MissionCoordinator: ObservableObject {
     }
 
     func useSmokeBomb() {
-        guard session.consume("Дим. шашка") else { return }
+        guard session.consume(.smokeBomb) else { return }
         detectionLevel = 0.0
         hapticProvider.play(.success)
     }
 
     func useEMP() {
-        guard session.consume("ЕМІ") else { return }
+        guard session.consume(.emp) else { return }
         empActive = true
         hapticProvider.play(.success)
         router.gameState = .safeCracking

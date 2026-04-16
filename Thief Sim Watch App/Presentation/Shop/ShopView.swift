@@ -91,8 +91,8 @@ private struct UpgradeRow: View {
     @ObservedObject var viewModel: ShopViewModel
 
     var body: some View {
-        let isOwned = viewModel.session.ownedUpgrades.contains(item.name)
-        let count = viewModel.session.consumables[item.name, default: 0]
+        let isOwned = viewModel.session.ownedUpgrades.contains(item.id)
+        let count = viewModel.session.consumables[item.id, default: 0]
 
         HStack {
             VStack(alignment: .leading) {
