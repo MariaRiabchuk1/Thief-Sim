@@ -33,9 +33,9 @@ enum VentCrawlMetrics {
     static let playerHeight: Double = 0.10
     static let playerCenterY: Double = 0.69
 
-    // Crown-bound lane.
-    static let laneMin: Double = 0.09
-    static let laneMax: Double = 0.79
+    // Crown-bound lane (clamped to keep the centered player sprite on-canvas).
+    static let laneMin: Double = playerWidth / 2
+    static let laneMax: Double = 1.0 - playerWidth / 2
 
     // Per-tick motion.
     static let obstacleFallPerTick: Double = 0.012

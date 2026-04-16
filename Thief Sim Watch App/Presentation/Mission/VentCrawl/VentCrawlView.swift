@@ -51,8 +51,8 @@ struct VentCrawlView: View {
             $viewModel.state.playerX,
             from: VentCrawlMetrics.laneMin,
             through: VentCrawlMetrics.laneMax,
-            by: 0.004,
-            sensitivity: .medium,
+            by: 0.005,
+            sensitivity: .low,
             isContinuous: false,
             isHapticFeedbackEnabled: false
         )
