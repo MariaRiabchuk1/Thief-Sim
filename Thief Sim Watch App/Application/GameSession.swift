@@ -14,10 +14,10 @@ final class GameSession: ObservableObject {
 
     // Progression
     @Published var unlockedDistricts: Set<String> = []
-    @Published var ownedUpgrades: Set<String> = []
+    @Published var ownedUpgrades: Set<UpgradeID> = []
     @Published var ownedSkins: Set<String> = ["Класика"]
     @Published var ownedAccessories: Set<String> = []
-    @Published var consumables: [String: Int] = ["Дим. шашка": 0, "ЕМІ": 0]
+    @Published var consumables: [UpgradeID: Int] = [.smokeBomb: 0, .emp: 0]
     @Published var districtProgress: [String: Int] = [:]
 
     // Active customization
@@ -85,9 +85,9 @@ final class GameSession: ObservableObject {
         guard economyService.canBuyItem(totalMoney: totalMoney, price: item.price) else { return }
         totalMoney -= item.price
         if item.isConsumable {
-            consumables[item.name, default: 0] += 1
+            consumables[item.id, default: 0] += 1
         } else {
-            ownedUpgrades.insert(item.name)
+            ownedUpgrades.insert(item.id)
         }
         hapticProvider.play(.success)
     }
@@ -123,9 +123,9 @@ final class GameSession: ObservableObject {
     }
 
     @discardableResult
-    func consume(_ itemName: String) -> Bool {
-        guard (consumables[itemName] ?? 0) > 0 else { return false }
-        consumables[itemName]! -= 1
+    func consume(_ id: UpgradeID) -> Bool {
+        guard (consumables[id] ?? 0) > 0 else { return false }
+        consumables[id]! -= 1
         return true
     }
 }

@@ -33,7 +33,7 @@ struct HackingView: View {
                 .buttonStyle(.borderedProminent)
                 .tint(.blue)
 
-            if (viewModel.session.consumables["ЕМІ"] ?? 0) > 0 {
+            if (viewModel.session.consumables[.emp] ?? 0) > 0 {
                 Button("ЕМІ (-1)") { viewModel.useEMP() }
                     .font(.caption2)
                     .foregroundColor(.orange)

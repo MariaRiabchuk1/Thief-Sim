@@ -66,11 +66,11 @@ private struct Header: View {
                     .foregroundColor(coordinator.timeRemaining < 10 ? .red : .orange)
             }
 
-            if (coordinator.session.consumables["Дим. шашка"] ?? 0) > 0 {
+            if (coordinator.session.consumables[.smokeBomb] ?? 0) > 0 {
                 Button(action: onSmokeBomb) {
                     HStack(spacing: 2) {
                         Image(systemName: "wind")
-                        Text("\(coordinator.session.consumables["Дим. шашка", default: 0])")
+                        Text("\(coordinator.session.consumables[.smokeBomb, default: 0])")
                             .font(.system(size: 8))
                     }
                 }
