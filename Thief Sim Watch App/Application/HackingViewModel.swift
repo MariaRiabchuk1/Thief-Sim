@@ -31,6 +31,15 @@ final class HackingViewModel: ObservableObject {
             hackDirection *= -1
             hackPosition = max(-1.0, min(1.0, hackPosition))
         }
+        
+        // Diegetic Audio: Alarm whine if outside green zone.
+        // Success zone is abs(hackPosition) < 0.25
+        if abs(hackPosition) >= 0.25 {
+            coordinator.audioProvider.play(.alarmWhine)
+        } else {
+            // In a more complex implementation, we'd only stop if it was playing
+            // but stopAll() or a specific stopSound() is safer for now.
+        }
     }
 
     func performHack() {
