@@ -11,8 +11,6 @@ struct SafeCrackingView: View {
         _viewModel = StateObject(wrappedValue: SafeCrackingViewModel(coordinator: coordinator))
     }
 
-    private let globalTick = Timer.publish(every: 1.0, on: .main, in: .common).autoconnect()
-
     var body: some View {
         ZStack {
             GeometryReader { geo in
@@ -68,7 +66,13 @@ struct SafeCrackingView: View {
         .onChange(of: viewModel.crownValue) { _, newValue in
             viewModel.handleSafeInput(newValue)
         }
-        .onReceive(globalTick) { _ in coordinator.handleSafePhaseTick() }
+        .task {
+            // Local 1s ticker driven by the clock abstraction.
+            while !Task.isCancelled {
+                coordinator.handleSafePhaseTick()
+                try? await coordinator.clock.sleep(seconds: 1.0)
+            }
+        }
     }
 }
 

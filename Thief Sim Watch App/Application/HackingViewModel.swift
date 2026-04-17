@@ -5,14 +5,16 @@ import WatchKit
 /// Drives the alarm-hacking minigame.
 final class HackingViewModel: ObservableObject {
     let coordinator: MissionCoordinator
+    let clock: GameClock
 
     @Published var hackPosition: Double = 0.0
     @Published var hackDirection: Double = 1.0
 
     private var cancellables = Set<AnyCancellable>()
 
-    init(coordinator: MissionCoordinator) {
+    init(coordinator: MissionCoordinator, clock: GameClock = SystemGameClock()) {
         self.coordinator = coordinator
+        self.clock = clock
         coordinator.objectWillChange
             .sink { [weak self] _ in self?.objectWillChange.send() }
             .store(in: &cancellables)
