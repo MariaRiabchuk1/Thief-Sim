@@ -2,16 +2,13 @@ import SwiftUI
 import Combine
 
 /// Root view that switches screens based on the app router.
-///
-/// Creates the session and non-mission view models once, wires navigation
-/// closures, and hands each screen its own view model. Mission-phase views
-/// build their own view models around the active `MissionCoordinator` and
-/// run their own timers.
 struct ContentView: View {
     @StateObject private var session: GameSession
     @StateObject private var router: AppRouter
     @StateObject private var mapViewModel: MapViewModel
     @StateObject private var shopViewModel: ShopViewModel
+    
+    @Environment(\.scenePhase) private var scenePhase
 
     init() {
         let session = GameSession()
@@ -41,40 +38,25 @@ struct ContentView: View {
         _router = StateObject(wrappedValue: router)
         _mapViewModel = StateObject(wrappedValue: mapVM)
         _shopViewModel = StateObject(wrappedValue: shopVM)
+        
+        // Initial check for recovery
+        router.checkForRecovery()
     }
 
     var body: some View {
         ZStack {
-            switch router.gameState {
-            case .map:
-                MapView(viewModel: mapViewModel)
-            case .shop:
-                ShopView(viewModel: shopViewModel)
-            case .ventCrawl:
-                if let mission = router.activeMission {
-                    VentCrawlView(coordinator: mission)
-                }
-            case .hacking:
-                if let mission = router.activeMission {
-                    HackingView(coordinator: mission)
-                }
-            case .safeCracking:
-                if let mission = router.activeMission {
-                    SafeCrackingView(coordinator: mission)
-                }
-            case .success:
-                if let mission = router.activeMission {
-                    SuccessView(coordinator: mission)
-                }
-            case .caught:
-                if let mission = router.activeMission {
-                    CaughtView(coordinator: mission)
-                }
+            if let snapshot = router.pendingRecoverySnapshot {
+                RecoveryView(snapshot: snapshot, router: router, session: session)
+            } else {
+                mainContent
             }
         }
         .id(router.gameState)
         .onOpenURL { url in
             router.handleDeepLink(url)
+        }
+        .onChange(of: scenePhase) { _, newPhase in
+            handleScenePhaseChange(newPhase)
         }
         .alert(item: $shopViewModel.infoAlert) { item in
             Alert(
@@ -83,5 +65,90 @@ struct ContentView: View {
                 dismissButton: .default(Text("ОК"))
             )
         }
+    }
+    
+    @ViewBuilder
+    private var mainContent: some View {
+        switch router.gameState {
+        case .map:
+            MapView(viewModel: mapViewModel)
+        case .shop:
+            ShopView(viewModel: shopViewModel)
+        case .ventCrawl:
+            if let mission = router.activeMission {
+                VentCrawlView(coordinator: mission)
+            }
+        case .hacking:
+            if let mission = router.activeMission {
+                HackingView(coordinator: mission)
+            }
+        case .safeCracking:
+            if let mission = router.activeMission {
+                SafeCrackingView(coordinator: mission)
+            }
+        case .success:
+            if let mission = router.activeMission {
+                SuccessView(coordinator: mission)
+            }
+        case .caught:
+            if let mission = router.activeMission {
+                CaughtView(coordinator: mission)
+            }
+        }
+    }
+    
+    private func handleScenePhaseChange(_ phase: ScenePhase) {
+        guard let mission = router.activeMission else { return }
+        
+        switch phase {
+        case .active:
+            mission.isPaused = false
+        case .inactive, .background:
+            mission.isPaused = true
+            mission.saveSnapshot()
+        @unknown default:
+            break
+        }
+    }
+}
+
+/// View shown when a mission can be recovered.
+struct RecoveryView: View {
+    let snapshot: ActiveMissionSnapshot
+    let router: AppRouter
+    let session: GameSession
+    
+    var body: some View {
+        VStack(spacing: 10) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.title2)
+                .foregroundColor(.orange)
+            
+            Text("ЗНАЙДЕНО ПЕРЕРВАНУ МІСІЮ")
+                .font(.system(size: 9, weight: .bold))
+                .multilineTextAlignment(.center)
+                .lineLimit(2)
+            
+            Text("Бажаєте продовжити?")
+                .font(.system(size: 8))
+                .multilineTextAlignment(.center)
+            
+            VStack(spacing: 5) {
+                Button("ПРОДОВЖИТИ") {
+                    router.recoverMission(session: session)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(.green)
+                .controlSize(.small)
+                
+                Button("СКАСУВАТИ") {
+                    router.abandonMission()
+                }
+                .buttonStyle(.bordered)
+                .tint(.red)
+                .controlSize(.small)
+            }
+        }
+        .padding()
     }
 }

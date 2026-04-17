@@ -1,7 +1,7 @@
 import Foundation
 
 /// Possible game states.
-enum GameState: Equatable {
+enum GameState: String, Codable, Equatable {
     case map
     case shop
     case ventCrawl

@@ -21,6 +21,11 @@ final class HackingViewModel: ObservableObject {
     var session: GameSession { coordinator.session }
 
     func tick() {
+        guard !coordinator.isPaused else {
+            coordinator.audioProvider.stopAll()
+            return
+        }
+        
         let speedBoost = Double(coordinator.level) * 0.5
         // Normalize speed to the -1.0...1.0 range. 
         // Original was roughly -55...55 with speed ~2-6. 

@@ -25,10 +25,13 @@ final class MissionCoordinator: ObservableObject {
     @Published var stuckProgress: Int = 0
     @Published var combination: [Double] = []
     @Published var currentStep: Int = 0
+    
+    @Published var isPaused: Bool = false
 
     let missionService: MissionService
     let hapticProvider: HapticProvider
     let audioProvider: AudioProvider
+    let persistenceService: MissionPersistenceService
 
     private var cancellables = Set<AnyCancellable>()
 
@@ -39,7 +42,8 @@ final class MissionCoordinator: ObservableObject {
         bribeActive: Bool,
         missionService: MissionService = GameMissionService(),
         hapticProvider: HapticProvider = WatchHapticProvider(),
-        audioProvider: AudioProvider = WatchAudioProvider()
+        audioProvider: AudioProvider = WatchAudioProvider(),
+        persistenceService: MissionPersistenceService = .shared
     ) {
         self.session = session
         self.router = router
@@ -48,9 +52,43 @@ final class MissionCoordinator: ObservableObject {
         self.missionService = missionService
         self.hapticProvider = hapticProvider
         self.audioProvider = audioProvider
+        self.persistenceService = persistenceService
+        
         session.objectWillChange
             .sink { [weak self] _ in self?.objectWillChange.send() }
             .store(in: &cancellables)
+    }
+    
+    /// Reconstructs a coordinator from a persistent snapshot.
+    convenience init?(
+        snapshot: ActiveMissionSnapshot,
+        session: GameSession,
+        router: AppRouter,
+        missionService: MissionService = GameMissionService(),
+        hapticProvider: HapticProvider = WatchHapticProvider(),
+        audioProvider: AudioProvider = WatchAudioProvider(),
+        persistenceService: MissionPersistenceService = .shared
+    ) {
+        guard let district = session.districts.first(where: { $0.id == snapshot.districtId }) else { return nil }
+        
+        self.init(
+            session: session,
+            router: router,
+            district: district,
+            bribeActive: snapshot.bribeActive,
+            missionService: missionService,
+            hapticProvider: hapticProvider,
+            audioProvider: audioProvider,
+            persistenceService: persistenceService
+        )
+        
+        self.detectionLevel = snapshot.detectionLevel
+        self.timeRemaining = snapshot.timeRemaining
+        self.empActive = snapshot.empActive
+        self.isTreasureLevel = snapshot.isTreasureLevel
+        self.combination = snapshot.combination
+        self.currentStep = snapshot.currentStep
+        self.isPaused = true // Resume starts paused
     }
 
     var level: Int { session.level(of: district) }
@@ -64,27 +102,32 @@ final class MissionCoordinator: ObservableObject {
         isTreasureLevel = missionService.shouldBeTreasureLevel()
         combination = missionService.generateCombination(length: district.codeLength)
         router.gameState = .ventCrawl
+        saveSnapshot()
     }
 
     func advance(to state: GameState) {
         router.gameState = state
+        saveSnapshot()
     }
 
     func markCaught() {
         hapticProvider.play(.failure)
         audioProvider.play(.failThump)
         router.gameState = .caught
+        persistenceService.clear()
     }
 
     func markSuccess() {
         audioProvider.play(.successChime)
         router.gameState = .success
+        persistenceService.clear()
     }
 
     func useSmokeBomb() {
         guard session.consume(.smokeBomb) else { return }
         detectionLevel = 0.0
         hapticProvider.play(.retry)
+        saveSnapshot()
     }
 
     func useEMP() {
@@ -92,17 +135,22 @@ final class MissionCoordinator: ObservableObject {
         empActive = true
         hapticProvider.play(.directionDown)
         router.gameState = .safeCracking
+        saveSnapshot()
     }
 
     func increaseDetection(by amount: Double) {
         detectionLevel += amount
         if detectionLevel >= 1.0 {
             markCaught()
+        } else {
+            saveSnapshot()
         }
     }
 
     // Safe-cracking tick (1s).
     func handleSafePhaseTick() {
+        guard !isPaused else { return }
+        
         patrolTick += 1
         if timeRemaining > 0 {
             timeRemaining -= 1
@@ -113,6 +161,11 @@ final class MissionCoordinator: ObservableObject {
         }
         if detectionLevel > 0.2 && patrolTick % 2 == 0 { hapticProvider.play(.click) }
         handlePatrolLogic()
+        
+        // Save periodic snapshot during safe cracking
+        if patrolTick % 5 == 0 {
+            saveSnapshot()
+        }
     }
 
     private func handlePatrolLogic() {
@@ -148,9 +201,25 @@ final class MissionCoordinator: ObservableObject {
         audioProvider.stopAll()
         router.activeMission = nil
         router.gameState = .map
+        persistenceService.clear()
     }
 
     var rewardPreview: Int {
         isTreasureLevel ? district.reward * 2 : district.reward
+    }
+    
+    func saveSnapshot() {
+        let snapshot = ActiveMissionSnapshot(
+            districtId: district.id,
+            gameState: router.gameState,
+            bribeActive: bribeActive,
+            detectionLevel: detectionLevel,
+            timeRemaining: timeRemaining,
+            empActive: empActive,
+            isTreasureLevel: isTreasureLevel,
+            combination: combination,
+            currentStep: currentStep
+        )
+        persistenceService.save(snapshot)
     }
 }
