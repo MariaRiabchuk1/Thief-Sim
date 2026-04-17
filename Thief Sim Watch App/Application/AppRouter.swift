@@ -39,12 +39,13 @@ final class AppRouter: ObservableObject {
     }
     
     func recoverMission(session: GameSession) {
-        guard let snapshot = pendingRecoverySnapshot else { return }
-        let coordinator = MissionCoordinator(
-            snapshot: snapshot,
-            session: session,
-            router: self
-        )
+        guard let snapshot = pendingRecoverySnapshot,
+              let coordinator = MissionCoordinator(
+                  snapshot: snapshot,
+                  session: session,
+                  router: self
+              ) else { return }
+        
         coordinator.isPaused = false // Unpause immediately on manual recovery
         self.activeMission = coordinator
         self.gameState = snapshot.gameState
