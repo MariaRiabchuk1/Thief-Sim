@@ -50,7 +50,7 @@ final class GameSession: ObservableObject {
         self.skins = dataRepository.getSkins()
         self.accessories = dataRepository.getAccessories()
 
-        loadProgress()
+        checkBuildAndLoad()
 
         if unlockedDistricts.isEmpty, let first = districts.first {
             unlockedDistricts.insert(first.id)
@@ -59,6 +59,33 @@ final class GameSession: ObservableObject {
         
         isInitialized = true
         syncToComplication()
+    }
+
+    /// Detects if this is a new build/install and resets progress if so.
+    /// Otherwise, loads the saved progression.
+    private func checkBuildAndLoad() {
+        let buildKey = "last_build_date"
+        let currentBuildDate = getBuildDate()
+        let storedBuildDate = UserDefaults.standard.string(forKey: buildKey)
+        
+        if currentBuildDate != storedBuildDate {
+            // New build detected -> Reset progress
+            print("GameSession: New build detected (\(currentBuildDate)). Resetting progress.")
+            UserDefaults.standard.set(currentBuildDate, forKey: buildKey)
+            saveProgress() // Save the "fresh" state
+        } else {
+            // Same build -> Load progress
+            loadProgress()
+        }
+    }
+    
+    private func getBuildDate() -> String {
+        if let infoPath = Bundle.main.path(forResource: "Info", ofType: "plist"),
+           let infoAttr = try? FileManager.default.attributesOfItem(atPath: infoPath),
+           let modificationDate = infoAttr[.modificationDate] as? Date {
+            return "\(modificationDate.timeIntervalSince1970)"
+        }
+        return "unknown"
     }
 
     // Persist
@@ -82,15 +109,10 @@ final class GameSession: ObservableObject {
     }
 
     private func loadProgress() {
-        guard let snapshot = progressRepository.load() else { 
-            print("GameSession: No saved progress found, starting fresh.")
-            return 
-        }
-        
+        guard let snapshot = progressRepository.load() else { return }
         self.totalMoney = snapshot.totalMoney
         self.totalEarnings = snapshot.totalEarnings
         
-        // Robust mapping with string fallback
         self.unlockedDistricts = Set(snapshot.unlockedDistricts.compactMap { DistrictID(rawValue: $0) })
         self.ownedUpgrades = Set(snapshot.ownedUpgrades.compactMap { UpgradeID(rawValue: $0) })
         self.ownedSkins = Set(snapshot.ownedSkins.compactMap { SkinID(rawValue: $0) })
@@ -112,7 +134,6 @@ final class GameSession: ObservableObject {
         self.currentAccessoryName = snapshot.currentAccessoryName
         self.seenCoachMarks = Set(snapshot.seenCoachMarks)
         
-        // Ensure standard skin is always owned
         self.ownedSkins.insert(.classic)
         print("GameSession: Progress loaded successfully. Money: $\(totalMoney)")
     }
@@ -221,7 +242,7 @@ final class GameSession: ObservableObject {
     func selectDistrict(_ id: DistrictID) {
         lastSelectedDistrictId = id
         syncToComplication()
-        saveProgress() // Save last selected district
+        saveProgress()
     }
 
     func markCoachMarkSeen(_ id: String) {
