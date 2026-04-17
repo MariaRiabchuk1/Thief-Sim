@@ -45,7 +45,20 @@ final class MapViewModel: ObservableObject {
         let district = currentDistrict
         let bribe = bribeActive
         bribeActive = false
+        session.selectDistrict(district.id)
         onStartMission?(district, bribe)
+    }
+    
+    func didSelectDistrict(at index: Int) {
+        selectedDistrictIndex = index
+        session.selectDistrict(currentDistrict.id)
+    }
+
+    func selectDistrict(_ id: DistrictID) {
+        if let index = session.districts.firstIndex(where: { $0.id == id }) {
+            selectedDistrictIndex = index
+            session.selectDistrict(id)
+        }
     }
 
     func openShop() {

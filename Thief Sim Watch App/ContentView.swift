@@ -32,6 +32,10 @@ struct ContentView: View {
         }
         mapVM.onOpenShop = { [weak router] in router?.gameState = .shop }
         shopVM.onClose = { [weak router] in router?.gameState = .map }
+        
+        router.onDeepLinkDistrict = { [weak mapVM] districtId in
+            mapVM?.selectDistrict(districtId)
+        }
 
         _session = StateObject(wrappedValue: session)
         _router = StateObject(wrappedValue: router)
@@ -69,6 +73,9 @@ struct ContentView: View {
             }
         }
         .id(router.gameState)
+        .onOpenURL { url in
+            router.handleDeepLink(url)
+        }
         .alert(item: $shopViewModel.infoAlert) { item in
             Alert(
                 title: Text(item.name),
