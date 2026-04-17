@@ -14,33 +14,38 @@ struct SafeCrackingView: View {
     private let globalTick = Timer.publish(every: 1.0, on: .main, in: .common).autoconnect()
 
     var body: some View {
-        VStack(spacing: 0) {
-            Header(coordinator: coordinator, onSmokeBomb: { viewModel.useSmokeBomb() })
-            Spacer()
+        GeometryReader { geo in
+            let size = min(geo.size.width, geo.size.height)
+            VStack(spacing: 0) {
+                Header(coordinator: coordinator, onSmokeBomb: { viewModel.useSmokeBomb() })
+                Spacer()
 
-            ZStack {
-                if coordinator.isLockStuck {
-                    StuckLockView()
-                } else {
-                    SafeDialView(
-                        crownValue: viewModel.crownValue,
-                        resonanceAlpha: viewModel.resonanceAlpha,
-                        isPatrolActive: coordinator.isPatrolActive,
-                        detectionLevel: coordinator.detectionLevel,
-                        isTreasureLevel: coordinator.isTreasureLevel,
-                        hasStethoscope: coordinator.hasStethoscope
-                    )
+                ZStack {
+                    if coordinator.isLockStuck {
+                        StuckLockView()
+                    } else {
+                        SafeDialView(
+                            crownValue: viewModel.crownValue,
+                            resonanceAlpha: viewModel.resonanceAlpha,
+                            isPatrolActive: coordinator.isPatrolActive,
+                            detectionLevel: coordinator.detectionLevel,
+                            isTreasureLevel: coordinator.isTreasureLevel,
+                            hasStethoscope: coordinator.hasStethoscope,
+                            baseSize: size * 0.7
+                        )
+                    }
                 }
-            }
-            .contentShape(Circle())
-            .onTapGesture {
-                if coordinator.isLockStuck {
-                    viewModel.tapStuckLock()
+                .contentShape(Circle())
+                .onTapGesture {
+                    if coordinator.isLockStuck {
+                        viewModel.tapStuckLock()
+                    }
                 }
-            }
 
-            Spacer()
-            Footer(coordinator: coordinator, onCrack: { viewModel.tryCrackSafe() })
+                Spacer()
+                Footer(coordinator: coordinator, onCrack: { viewModel.tryCrackSafe() })
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .focusable()
         .digitalCrownRotation($viewModel.crownValue, from: 0, through: 100, by: 0.5, sensitivity: .low, isContinuous: true, isHapticFeedbackEnabled: false)
@@ -174,13 +179,14 @@ private struct SafeDialView: View {
     let detectionLevel: Double
     let isTreasureLevel: Bool
     let hasStethoscope: Bool
+    let baseSize: CGFloat
 
     var body: some View {
         ZStack {
             if isPatrolActive {
                 Circle()
                     .fill(Color.red.opacity(0.2))
-                    .frame(width: 95, height: 95)
+                    .frame(width: baseSize * 1.1, height: baseSize * 1.1)
                     .blur(radius: 5)
             }
 
@@ -191,20 +197,20 @@ private struct SafeDialView: View {
                 .opacity(resonanceAlpha)
 
             Circle()
-                .fill(RadialGradient(colors: [.gray.opacity(0.2), .black], center: .center, startRadius: 0, endRadius: 50))
+                .fill(RadialGradient(colors: [.gray.opacity(0.2), .black], center: .center, startRadius: 0, endRadius: baseSize / 2))
 
             Circle()
                 .fill(LinearGradient(colors: [.gray, .black], startPoint: .top, endPoint: .bottom))
-                .frame(width: 65, height: 65)
+                .frame(width: baseSize * 0.75, height: baseSize * 0.75)
                 .rotationEffect(.degrees(crownValue * 3.6))
 
             Rectangle()
                 .fill(resonanceAlpha > 0.8 ? Color.green : Color.red)
-                .frame(width: 3, height: 8)
-                .offset(y: -28)
+                .frame(width: baseSize * 0.035, height: baseSize * 0.1)
+                .offset(y: -baseSize * 0.33)
                 .rotationEffect(.degrees(crownValue * 3.6))
         }
-        .frame(width: 85, height: 85)
+        .frame(width: baseSize, height: baseSize)
         .modifier(TensionShake(detectionLevel: detectionLevel, active: !isPatrolActive))
     }
 }
