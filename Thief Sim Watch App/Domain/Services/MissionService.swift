@@ -9,6 +9,12 @@ protocol MissionService {
 }
 
 class GameMissionService: MissionService {
+    private var rng: any RandomNumberGenerator
+
+    init(rng: any RandomNumberGenerator = SystemRandomNumberGenerator()) {
+        self.rng = rng
+    }
+
     func calculateScaledTolerance(base: Double, bribeActive: Bool, level: Int, minTolerance: Double) -> Double {
         var tolerance = base
         if bribeActive { tolerance += 1.0 }
@@ -21,10 +27,10 @@ class GameMissionService: MissionService {
     }
     
     func shouldBeTreasureLevel() -> Bool {
-        Int.random(in: 0...100) < 15
+        Int.random(in: 0...100, using: &rng) < 15
     }
     
     func generateCombination(length: Int) -> [Double] {
-        (0..<length).map { _ in Double.random(in: 10...90).rounded() }
+        (0..<length).map { _ in Double.random(in: 10...90, using: &rng).rounded() }
     }
 }
