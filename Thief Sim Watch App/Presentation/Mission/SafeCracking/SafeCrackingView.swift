@@ -14,38 +14,51 @@ struct SafeCrackingView: View {
     private let globalTick = Timer.publish(every: 1.0, on: .main, in: .common).autoconnect()
 
     var body: some View {
-        GeometryReader { geo in
-            let size = min(geo.size.width, geo.size.height)
-            VStack(spacing: 0) {
-                Header(coordinator: coordinator, onSmokeBomb: { viewModel.useSmokeBomb() })
-                Spacer()
+        ZStack {
+            GeometryReader { geo in
+                let size = min(geo.size.width, geo.size.height)
+                VStack(spacing: 0) {
+                    Header(coordinator: coordinator, onSmokeBomb: { viewModel.useSmokeBomb() })
+                    Spacer()
 
-                ZStack {
-                    if coordinator.isLockStuck {
-                        StuckLockView()
-                    } else {
-                        SafeDialView(
-                            crownValue: viewModel.crownValue,
-                            resonanceAlpha: viewModel.resonanceAlpha,
-                            isPatrolActive: coordinator.isPatrolActive,
-                            detectionLevel: coordinator.detectionLevel,
-                            isTreasureLevel: coordinator.isTreasureLevel,
-                            hasStethoscope: coordinator.hasStethoscope,
-                            baseSize: size * 0.7
-                        )
+                    ZStack {
+                        if coordinator.isLockStuck {
+                            StuckLockView()
+                        } else {
+                            SafeDialView(
+                                crownValue: viewModel.crownValue,
+                                resonanceAlpha: viewModel.resonanceAlpha,
+                                isPatrolActive: coordinator.isPatrolActive,
+                                detectionLevel: coordinator.detectionLevel,
+                                isTreasureLevel: coordinator.isTreasureLevel,
+                                hasStethoscope: coordinator.hasStethoscope,
+                                baseSize: size * 0.7
+                            )
+                        }
                     }
-                }
-                .contentShape(Circle())
-                .onTapGesture {
-                    if coordinator.isLockStuck {
-                        viewModel.tapStuckLock()
+                    .contentShape(Circle())
+                    .onTapGesture {
+                        if coordinator.isLockStuck {
+                            viewModel.tapStuckLock()
+                        }
                     }
-                }
 
-                Spacer()
-                Footer(coordinator: coordinator, onCrack: { viewModel.tryCrackSafe() })
+                    Spacer()
+                    Footer(coordinator: coordinator, onCrack: { viewModel.tryCrackSafe() })
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+            if !coordinator.session.seenCoachMarks.contains(CoachMarkID.safeCracking) {
+                CoachMarkView(
+                    icon: "safe.fill",
+                    instruction: "Rotate dial to find the combo. Avoid patrol. Tap quickly if lock is stuck.",
+                    onDismiss: {
+                        coordinator.session.markCoachMarkSeen(CoachMarkID.safeCracking)
+                    }
+                )
+                .transition(.opacity)
+            }
         }
         .focusable()
         .digitalCrownRotation($viewModel.crownValue, from: 0, through: 100, by: 0.5, sensitivity: .low, isContinuous: true, isHapticFeedbackEnabled: false)

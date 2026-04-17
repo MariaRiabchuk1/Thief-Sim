@@ -13,8 +13,8 @@ struct VentCrawlView: View {
     }
 
     private let tick = Timer.publish(every: 0.05, on: .main, in: .common).autoconnect()
-
-    var body: some View {
+var body: some View {
+    ZStack {
         GeometryReader { geo in
             let size = geo.size
             ZStack(alignment: .topLeading) {
@@ -46,7 +46,21 @@ struct VentCrawlView: View {
             .frame(width: size.width, height: size.height)
             .clipShape(RoundedRectangle(cornerRadius: 15))
         }
-        .focusable()
+
+        if !viewModel.session.seenCoachMarks.contains(CoachMarkID.ventCrawl) {
+            CoachMarkView(
+                icon: "crown.fill",
+                instruction: "Rotate crown to switch lanes and dodge obstacles",
+                onDismiss: {
+                    viewModel.session.markCoachMarkSeen(CoachMarkID.ventCrawl)
+                }
+            )
+            .transition(.opacity)
+        }
+    }
+    .focusable()
+...
+
         .digitalCrownRotation(
             $viewModel.state.playerX,
             from: VentCrawlMetrics.laneMin,
