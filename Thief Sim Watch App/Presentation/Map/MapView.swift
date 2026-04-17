@@ -6,14 +6,25 @@ struct MapView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack(alignment: .top) {
+            // Header Row
+            HStack(alignment: .center) {
+                Button(action: { viewModel.openShop() }) {
+                    Image(systemName: "cart.fill")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .frame(width: 34, height: 34) // Increased hit target
+                        .background(Color.blue.opacity(0.3), in: Circle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Open Shop")
+                
                 VStack(alignment: .leading, spacing: -1) {
                     Text("$\(viewModel.session.totalMoney)")
-                        .font(.system(size: 14, weight: .bold)) // Slightly increased
+                        .font(.system(size: 14, weight: .bold))
                         .foregroundStyle(.yellow)
                         .accessibilityLabel("Balance \(viewModel.session.totalMoney) dollars")
                     Text(viewModel.session.playerRank)
-                        .font(.system(size: 9)) // 9pt floor
+                        .font(.system(size: 9))
                         .foregroundStyle(.blue)
                         .italic()
                         .lineLimit(1)
@@ -22,9 +33,8 @@ struct MapView: View {
                 }
                 Spacer()
             }
-            .padding(.leading, 22)
-            .padding(.trailing, 44)
-            .padding(.top, 6)
+            .padding(.horizontal, 8)
+            .padding(.top, 10) // More space from the top clock
 
             TabView(selection: $viewModel.selectedDistrictIndex) {
                 ForEach(0..<viewModel.session.districts.count, id: \.self) { index in
@@ -33,22 +43,7 @@ struct MapView: View {
                 }
             }
             .tabViewStyle(PageTabViewStyle())
-            .overlay(alignment: .topLeading) {
-                Button(action: { viewModel.openShop() }) {
-                    Image(systemName: "cart.fill")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(.white)
-                        .frame(width: 28, height: 28)
-                        .background(Color.blue.opacity(0.3), in: Circle())
-                        .contentShape(Circle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Open Shop")
-                .padding(.leading, 4)
-                .padding(.top, 2)
-            }
         }
-        .ignoresSafeArea(.container, edges: .top)
     }
 }
 
