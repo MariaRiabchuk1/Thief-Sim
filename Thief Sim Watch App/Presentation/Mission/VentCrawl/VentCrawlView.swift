@@ -13,54 +13,53 @@ struct VentCrawlView: View {
     }
 
     private let tick = Timer.publish(every: 0.05, on: .main, in: .common).autoconnect()
-var body: some View {
-    ZStack {
-        GeometryReader { geo in
-            let size = geo.size
-            ZStack(alignment: .topLeading) {
-                Color.black
-                BackgroundGrid(progress: viewModel.state.progress)
 
-                ForEach(viewModel.state.bullets) { bullet in
-                    Rectangle()
-                        .fill(Color.yellow)
-                        .frame(width: 3, height: 3)
-                        .position(x: bullet.x * size.width, y: bullet.y * size.height)
+    var body: some View {
+        ZStack {
+            GeometryReader { geo in
+                let size = geo.size
+                ZStack(alignment: .topLeading) {
+                    Color.black
+                    BackgroundGrid(progress: viewModel.state.progress)
+
+                    ForEach(viewModel.state.bullets) { bullet in
+                        Rectangle()
+                            .fill(Color.yellow)
+                            .frame(width: 3, height: 3)
+                            .position(x: bullet.x * size.width, y: bullet.y * size.height)
+                    }
+
+                    ForEach(viewModel.state.obstacles) { obs in
+                        ObstacleView(obstacle: obs, size: size)
+                    }
+
+                    PlayerFigureView(
+                        skinColor: viewModel.session.currentSkin.color,
+                        accessory: viewModel.session.currentAccessory
+                    )
+                    .position(
+                        x: viewModel.state.playerX * size.width,
+                        y: VentCrawlMetrics.playerCenterY * size.height
+                    )
+
+                    HUD(level: viewModel.coordinator.level + 1, progress: viewModel.state.progress)
                 }
-
-                ForEach(viewModel.state.obstacles) { obs in
-                    ObstacleView(obstacle: obs, size: size)
-                }
-
-                PlayerFigureView(
-                    skinColor: viewModel.session.currentSkin.color,
-                    accessory: viewModel.session.currentAccessory
-                )
-                .position(
-                    x: viewModel.state.playerX * size.width,
-                    y: VentCrawlMetrics.playerCenterY * size.height
-                )
-
-                HUD(level: viewModel.coordinator.level + 1, progress: viewModel.state.progress)
+                .frame(width: size.width, height: size.height)
+                .clipShape(RoundedRectangle(cornerRadius: 15))
             }
-            .frame(width: size.width, height: size.height)
-            .clipShape(RoundedRectangle(cornerRadius: 15))
-        }
 
-        if !viewModel.session.seenCoachMarks.contains(CoachMarkID.ventCrawl) {
-            CoachMarkView(
-                icon: "crown.fill",
-                instruction: "Rotate crown to switch lanes and dodge obstacles",
-                onDismiss: {
-                    viewModel.session.markCoachMarkSeen(CoachMarkID.ventCrawl)
-                }
-            )
-            .transition(.opacity)
+            if !viewModel.session.seenCoachMarks.contains(CoachMarkID.ventCrawl) {
+                CoachMarkView(
+                    icon: "crown.fill",
+                    instruction: "Rotate crown to switch lanes and dodge obstacles",
+                    onDismiss: {
+                        viewModel.session.markCoachMarkSeen(CoachMarkID.ventCrawl)
+                    }
+                )
+                .transition(.opacity)
+            }
         }
-    }
-    .focusable()
-...
-
+        .focusable()
         .digitalCrownRotation(
             $viewModel.state.playerX,
             from: VentCrawlMetrics.laneMin,

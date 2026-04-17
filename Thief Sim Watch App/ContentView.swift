@@ -45,8 +45,8 @@ struct ContentView: View {
 
     var body: some View {
         ZStack {
-            if let snapshot = router.pendingRecoverySnapshot {
-                RecoveryView(snapshot: snapshot, router: router, session: session)
+            if router.pendingRecoverySnapshot != nil {
+                RecoveryView(router: router, session: session)
             } else {
                 mainContent
             }
@@ -114,8 +114,7 @@ struct ContentView: View {
 
 /// View shown when a mission can be recovered.
 struct RecoveryView: View {
-    let snapshot: ActiveMissionSnapshot
-    let router: AppRouter
+    @ObservedObject var router: AppRouter
     let session: GameSession
     
     var body: some View {
@@ -135,14 +134,18 @@ struct RecoveryView: View {
             
             VStack(spacing: 5) {
                 Button("ПРОДОВЖИТИ") {
-                    router.recoverMission(session: session)
+                    withAnimation {
+                        router.recoverMission(session: session)
+                    }
                 }
                 .buttonStyle(.borderedProminent)
                 .tint(.green)
                 .controlSize(.small)
                 
                 Button("СКАСУВАТИ") {
-                    router.abandonMission()
+                    withAnimation {
+                        router.abandonMission()
+                    }
                 }
                 .buttonStyle(.bordered)
                 .tint(.red)
