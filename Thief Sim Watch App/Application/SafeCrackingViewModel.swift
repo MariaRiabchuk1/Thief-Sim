@@ -51,6 +51,12 @@ final class SafeCrackingViewModel: ObservableObject {
             } else {
                 coordinator.hapticProvider.play(.click)
             }
+            
+            // Diegetic Audio: Play tick with dynamic pitch based on resonance.
+            // Further away = lower pitch, closer = higher pitch.
+            let pitchValue = Float(resonanceAlpha) // 0.0 to 1.0
+            coordinator.audioProvider.play(.dialTick(pitch: pitchValue))
+            
             lastFeedbackValue = value
         }
         if coordinator.detectionLevel >= 1.0 {

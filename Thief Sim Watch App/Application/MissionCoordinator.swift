@@ -28,6 +28,7 @@ final class MissionCoordinator: ObservableObject {
 
     let missionService: MissionService
     let hapticProvider: HapticProvider
+    let audioProvider: AudioProvider
 
     private var cancellables = Set<AnyCancellable>()
 
@@ -37,7 +38,8 @@ final class MissionCoordinator: ObservableObject {
         district: District,
         bribeActive: Bool,
         missionService: MissionService = GameMissionService(),
-        hapticProvider: HapticProvider = WatchHapticProvider()
+        hapticProvider: HapticProvider = WatchHapticProvider(),
+        audioProvider: AudioProvider = WatchAudioProvider()
     ) {
         self.session = session
         self.router = router
@@ -45,6 +47,7 @@ final class MissionCoordinator: ObservableObject {
         self.bribeActive = bribeActive
         self.missionService = missionService
         self.hapticProvider = hapticProvider
+        self.audioProvider = audioProvider
         session.objectWillChange
             .sink { [weak self] _ in self?.objectWillChange.send() }
             .store(in: &cancellables)
@@ -69,10 +72,12 @@ final class MissionCoordinator: ObservableObject {
 
     func markCaught() {
         hapticProvider.play(.failure)
+        audioProvider.play(.failThump)
         router.gameState = .caught
     }
 
     func markSuccess() {
+        audioProvider.play(.successChime)
         router.gameState = .success
     }
 
@@ -102,7 +107,7 @@ final class MissionCoordinator: ObservableObject {
         if timeRemaining > 0 {
             timeRemaining -= 1
             if timeRemaining == 0 {
-                router.gameState = .caught
+                markCaught()
                 return
             }
         }
@@ -140,6 +145,7 @@ final class MissionCoordinator: ObservableObject {
         } else {
             session.halveMoney()
         }
+        audioProvider.stopAll()
         router.activeMission = nil
         router.gameState = .map
     }
