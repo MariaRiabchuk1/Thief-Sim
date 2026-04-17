@@ -10,6 +10,8 @@ final class AppRouter: ObservableObject {
     @Published var gameState: GameState = .map
     @Published var activeMission: MissionCoordinator?
     
+    @Published var pendingRecoverySnapshot: ActiveMissionSnapshot?
+    
     var onDeepLinkDistrict: ((DistrictID) -> Void)?
 
     /// Handles deep linking from the complication.
@@ -28,5 +30,28 @@ final class AppRouter: ObservableObject {
                 onDeepLinkDistrict?(districtId)
             }
         }
+    }
+    
+    func checkForRecovery() {
+        if let snapshot = MissionPersistenceService.shared.load() {
+            self.pendingRecoverySnapshot = snapshot
+        }
+    }
+    
+    func recoverMission(session: GameSession) {
+        guard let snapshot = pendingRecoverySnapshot else { return }
+        let coordinator = MissionCoordinator(
+            snapshot: snapshot,
+            session: session,
+            router: self
+        )
+        self.activeMission = coordinator
+        self.gameState = snapshot.gameState
+        self.pendingRecoverySnapshot = nil
+    }
+    
+    func abandonMission() {
+        MissionPersistenceService.shared.clear()
+        self.pendingRecoverySnapshot = nil
     }
 }

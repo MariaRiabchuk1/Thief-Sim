@@ -28,6 +28,8 @@ final class VentCrawlViewModel: ObservableObject {
     var session: GameSession { coordinator.session }
 
     func tick() {
+        guard !coordinator.isPaused else { return }
+        
         switch engine.step(state: &state, level: coordinator.level) {
         case .ongoing:
             break
