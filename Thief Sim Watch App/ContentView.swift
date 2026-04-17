@@ -125,11 +125,13 @@ struct RecoveryView: View {
                 .foregroundColor(.orange)
             
             Text("ЗНАЙДЕНО ПЕРЕРВАНУ МІСІЮ")
-                .font(.system(size: 10, weight: .bold))
+                .font(.system(size: 9, weight: .bold))
                 .multilineTextAlignment(.center)
+                .lineLimit(2)
             
             Text("Бажаєте продовжити?")
-                .font(.system(size: 9))
+                .font(.system(size: 8))
+                .multilineTextAlignment(.center)
             
             VStack(spacing: 5) {
                 Button("ПРОДОВЖИТИ") {
