@@ -20,6 +20,7 @@ final class GameSession: ObservableObject {
     // Active customization
     @Published var currentSkinName: String = "Класика"
     @Published var currentAccessoryName: String? = nil
+    @Published var seenCoachMarks: Set<String> = []
 
     // Catalogs
     let districts: [District]
@@ -69,7 +70,8 @@ final class GameSession: ObservableObject {
             consumables: consumables,
             districtProgress: districtProgress,
             currentSkinName: currentSkinName,
-            currentAccessoryName: currentAccessoryName
+            currentAccessoryName: currentAccessoryName,
+            seenCoachMarks: seenCoachMarks
         )
         persistence.save(snapshot)
     }
@@ -86,6 +88,7 @@ final class GameSession: ObservableObject {
         self.districtProgress = snapshot.districtProgress
         self.currentSkinName = snapshot.currentSkinName
         self.currentAccessoryName = snapshot.currentAccessoryName
+        self.seenCoachMarks = snapshot.seenCoachMarks
     }
 
     // Lookups
@@ -193,5 +196,10 @@ final class GameSession: ObservableObject {
     func selectDistrict(_ id: DistrictID) {
         lastSelectedDistrictId = id
         syncToComplication()
+    }
+
+    func markCoachMarkSeen(_ id: String) {
+        seenCoachMarks.insert(id)
+        saveSession()
     }
 }

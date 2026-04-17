@@ -12,6 +12,7 @@ struct GameSessionSnapshot: Codable {
     let districtProgress: [String: Int]
     let currentSkinName: String
     let currentAccessoryName: String?
+    let seenCoachMarks: Set<String>
 }
 
 /// Handles saving and loading the player's progression.
