@@ -22,7 +22,7 @@ A mission-based "thief simulator" game for Apple Watch, built with SwiftUI and f
         - `GameSession`: Holds persistent player data (money, unlocks, customization).
         - `MissionCoordinator`: Manages the lifecycle and shared state of a single active mission.
     - `Presentation/`: SwiftUI Views and per-phase ViewModels.
-        - `Common/Components/`: Reusable UI elements (`HUDView`, `PlayerFigureView`).
+        - `Common/Components/`: Reusable UI elements (`PlayerFigureView`).
         - `Map/`, `Shop/`, `Mission/`, `Results/`: Feature-specific screens.
 - `Thief Sim Watch AppTests/`: Unit tests for domain logic (e.g., `VentCrawlEngineTests`).
 
