@@ -56,6 +56,9 @@ struct VentCrawlView: View {
             isContinuous: false,
             isHapticFeedbackEnabled: false
         )
+        .onAppear {
+            viewModel.state.playerX = 0.5
+        }
         .onReceive(tick) { _ in viewModel.tick() }
     }
 }

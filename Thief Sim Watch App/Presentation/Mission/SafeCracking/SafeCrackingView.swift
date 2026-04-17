@@ -44,6 +44,9 @@ struct SafeCrackingView: View {
         }
         .focusable()
         .digitalCrownRotation($viewModel.crownValue, from: 0, through: 100, by: 0.5, sensitivity: .low, isContinuous: true, isHapticFeedbackEnabled: false)
+        .onAppear {
+            viewModel.crownValue = 50
+        }
         .onChange(of: viewModel.crownValue) { _, newValue in
             viewModel.handleSafeInput(newValue)
         }

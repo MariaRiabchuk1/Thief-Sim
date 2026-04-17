@@ -68,6 +68,7 @@ struct ContentView: View {
                 }
             }
         }
+        .id(router.gameState)
         .alert(item: $shopViewModel.infoAlert) { item in
             Alert(
                 title: Text(item.name),
