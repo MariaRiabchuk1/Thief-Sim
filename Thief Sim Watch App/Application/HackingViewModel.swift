@@ -28,7 +28,7 @@ final class HackingViewModel: ObservableObject {
 
     func performHack() {
         if abs(hackPosition) < 15 {
-            coordinator.hapticProvider.play(.success)
+            coordinator.hapticProvider.play(.start)
             coordinator.advance(to: .safeCracking)
         } else {
             coordinator.hapticProvider.play(.failure)

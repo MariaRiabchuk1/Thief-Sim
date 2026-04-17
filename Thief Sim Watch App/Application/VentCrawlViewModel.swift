@@ -33,7 +33,7 @@ final class VentCrawlViewModel: ObservableObject {
             break
         case .finished:
             coordinator.advance(to: .hacking)
-            coordinator.hapticProvider.play(.success)
+            coordinator.hapticProvider.play(.directionUp)
         case .caught:
             coordinator.markCaught()
         }
