@@ -45,6 +45,7 @@ final class AppRouter: ObservableObject {
             session: session,
             router: self
         )
+        coordinator.isPaused = false // Unpause immediately on manual recovery
         self.activeMission = coordinator
         self.gameState = snapshot.gameState
         self.pendingRecoverySnapshot = nil
