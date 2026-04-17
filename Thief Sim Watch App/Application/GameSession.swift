@@ -32,6 +32,8 @@ final class GameSession: ObservableObject {
     private let economyService: EconomyService
     private let hapticProvider: HapticProvider
     private let progressRepository: ProgressRepository
+    
+    private var isInitialized = false
 
     init(
         dataRepository: GameDataRepository = StaticGameDataRepository(),
@@ -55,11 +57,14 @@ final class GameSession: ObservableObject {
             lastSelectedDistrictId = first.id
         }
         
+        isInitialized = true
         syncToComplication()
     }
 
     // Persist
     private func saveProgress() {
+        guard isInitialized else { return }
+        
         let snapshot = PlayerProgress(
             totalMoney: totalMoney,
             totalEarnings: totalEarnings,
@@ -77,7 +82,11 @@ final class GameSession: ObservableObject {
     }
 
     private func loadProgress() {
-        guard let snapshot = progressRepository.load() else { return }
+        guard let snapshot = progressRepository.load() else { 
+            print("GameSession: No saved progress found, starting fresh.")
+            return 
+        }
+        
         self.totalMoney = snapshot.totalMoney
         self.totalEarnings = snapshot.totalEarnings
         
@@ -105,6 +114,7 @@ final class GameSession: ObservableObject {
         
         // Ensure standard skin is always owned
         self.ownedSkins.insert(.classic)
+        print("GameSession: Progress loaded successfully. Money: $\(totalMoney)")
     }
 
     // Lookups
@@ -211,6 +221,7 @@ final class GameSession: ObservableObject {
     func selectDistrict(_ id: DistrictID) {
         lastSelectedDistrictId = id
         syncToComplication()
+        saveProgress() // Save last selected district
     }
 
     func markCoachMarkSeen(_ id: String) {
