@@ -5,26 +5,26 @@ import Foundation
 /// Using enums means two items with the same display name (or a typo in
 /// one) can't collide — the compiler enforces uniqueness, and `Identifiable`
 /// gets a reliable key without relying on a runtime-generated UUID.
-enum DistrictID: String, CaseIterable, Hashable {
+enum DistrictID: String, Codable, CaseIterable, Hashable {
     case outskirts
     case center
     case island
 }
 
-enum UpgradeID: String, CaseIterable, Hashable {
+enum UpgradeID: String, Codable, CaseIterable, Hashable {
     case stethoscope
     case lockpicks
     case smokeBomb
     case emp
 }
 
-enum SkinID: String, CaseIterable, Hashable {
+enum SkinID: String, Codable, CaseIterable, Hashable {
     case classic
     case ninja
     case neon
 }
 
-enum AccessoryID: String, CaseIterable, Hashable {
+enum AccessoryID: String, Codable, CaseIterable, Hashable {
     case cap
     case tophat
     case backpack
