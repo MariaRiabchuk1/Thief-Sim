@@ -1,25 +1,23 @@
 import Foundation
 
 /// DTO for persisting the entire player session.
+/// Uses String for IDs in storage to be robust against enum changes.
 struct PlayerProgress: Codable {
     let totalMoney: Int
     let totalEarnings: Int
-    let unlockedDistricts: Set<DistrictID>
-    let ownedUpgrades: Set<UpgradeID>
-    let ownedSkins: Set<SkinID>
-    let ownedAccessories: Set<AccessoryID>
-    let consumables: [UpgradeID: Int]
-    let districtProgress: [DistrictID: Int]
+    let unlockedDistricts: [String]
+    let ownedUpgrades: [String]
+    let ownedSkins: [String]
+    let ownedAccessories: [String]
+    let consumables: [String: Int]
+    let districtProgress: [String: Int]
     let currentSkinName: String
     let currentAccessoryName: String?
-    let seenCoachMarks: Set<String>
+    let seenCoachMarks: [String]
 }
 
 /// Repository for managing player progression persistence.
 protocol ProgressRepository {
-    /// Loads the player progress from persistent storage.
     func load() -> PlayerProgress?
-    
-    /// Saves the player progress to persistent storage.
     func save(_ progress: PlayerProgress)
 }

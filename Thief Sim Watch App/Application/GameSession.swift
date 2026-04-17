@@ -3,10 +3,6 @@ import Combine
 import WatchKit
 
 /// Cross-cutting player progression and catalog data.
-///
-/// Owns everything that persists across screens and survives a mission: money,
-/// unlocks, purchased upgrades, customization, and the static catalogs the UI
-/// reads from. Mission-scoped or minigame-scoped state does NOT belong here.
 final class GameSession: ObservableObject {
     // Economy
     @Published var totalMoney: Int = 0
@@ -67,15 +63,15 @@ final class GameSession: ObservableObject {
         let snapshot = PlayerProgress(
             totalMoney: totalMoney,
             totalEarnings: totalEarnings,
-            unlockedDistricts: unlockedDistricts,
-            ownedUpgrades: ownedUpgrades,
-            ownedSkins: ownedSkins,
-            ownedAccessories: ownedAccessories,
-            consumables: consumables,
-            districtProgress: districtProgress,
+            unlockedDistricts: unlockedDistricts.map { $0.rawValue },
+            ownedUpgrades: ownedUpgrades.map { $0.rawValue },
+            ownedSkins: ownedSkins.map { $0.rawValue },
+            ownedAccessories: ownedAccessories.map { $0.rawValue },
+            consumables: Dictionary(uniqueKeysWithValues: consumables.map { ($0.key.rawValue, $0.value) }),
+            districtProgress: Dictionary(uniqueKeysWithValues: districtProgress.map { ($0.key.rawValue, $0.value) }),
             currentSkinName: currentSkinName,
             currentAccessoryName: currentAccessoryName,
-            seenCoachMarks: seenCoachMarks
+            seenCoachMarks: Array(seenCoachMarks)
         )
         progressRepository.save(snapshot)
     }
@@ -84,15 +80,31 @@ final class GameSession: ObservableObject {
         guard let snapshot = progressRepository.load() else { return }
         self.totalMoney = snapshot.totalMoney
         self.totalEarnings = snapshot.totalEarnings
-        self.unlockedDistricts = snapshot.unlockedDistricts
-        self.ownedUpgrades = snapshot.ownedUpgrades
-        self.ownedSkins = snapshot.ownedSkins
-        self.ownedAccessories = snapshot.ownedAccessories
-        self.consumables = snapshot.consumables
-        self.districtProgress = snapshot.districtProgress
+        
+        // Robust mapping with string fallback
+        self.unlockedDistricts = Set(snapshot.unlockedDistricts.compactMap { DistrictID(rawValue: $0) })
+        self.ownedUpgrades = Set(snapshot.ownedUpgrades.compactMap { UpgradeID(rawValue: $0) })
+        self.ownedSkins = Set(snapshot.ownedSkins.compactMap { SkinID(rawValue: $0) })
+        self.ownedAccessories = Set(snapshot.ownedAccessories.compactMap { AccessoryID(rawValue: $0) })
+        
+        var mappedConsumables: [UpgradeID: Int] = [:]
+        for (key, value) in snapshot.consumables {
+            if let id = UpgradeID(rawValue: key) { mappedConsumables[id] = value }
+        }
+        self.consumables = mappedConsumables
+        
+        var mappedProgress: [DistrictID: Int] = [:]
+        for (key, value) in snapshot.districtProgress {
+            if let id = DistrictID(rawValue: key) { mappedProgress[id] = value }
+        }
+        self.districtProgress = mappedProgress
+        
         self.currentSkinName = snapshot.currentSkinName
         self.currentAccessoryName = snapshot.currentAccessoryName
-        self.seenCoachMarks = snapshot.seenCoachMarks
+        self.seenCoachMarks = Set(snapshot.seenCoachMarks)
+        
+        // Ensure standard skin is always owned
+        self.ownedSkins.insert(.classic)
     }
 
     // Lookups
@@ -101,7 +113,6 @@ final class GameSession: ObservableObject {
     var playerRank: String { economyService.getPlayerRank(totalEarnings: totalEarnings) }
     func level(of district: District) -> Int { districtProgress[district.id, default: 0] }
 
-    // Sync
     private func syncToComplication() {
         ComplicationDataService.shared.save(balance: totalMoney, districtId: lastSelectedDistrictId)
     }
