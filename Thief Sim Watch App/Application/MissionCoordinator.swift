@@ -79,13 +79,13 @@ final class MissionCoordinator: ObservableObject {
     func useSmokeBomb() {
         guard session.consume(.smokeBomb) else { return }
         detectionLevel = 0.0
-        hapticProvider.play(.success)
+        hapticProvider.play(.retry)
     }
 
     func useEMP() {
         guard session.consume(.emp) else { return }
         empActive = true
-        hapticProvider.play(.success)
+        hapticProvider.play(.directionDown)
         router.gameState = .safeCracking
     }
 
@@ -121,6 +121,10 @@ final class MissionCoordinator: ObservableObject {
             isPatrolWarning = false
             isPatrolActive = true
             hapticProvider.play(.stop)
+            // Patrol start chain: .stop + .failure
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                self.hapticProvider.play(.failure)
+            }
         } else if isPatrolActive {
             isPatrolActive = false
             hapticProvider.play(.directionDown)

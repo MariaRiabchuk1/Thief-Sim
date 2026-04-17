@@ -62,7 +62,7 @@ final class GameSession: ObservableObject {
         guard economyService.canUnlockDistrict(totalMoney: totalMoney, district: district) else { return }
         totalMoney -= district.unlockPrice
         unlockedDistricts.insert(district.name)
-        hapticProvider.play(.success)
+        hapticProvider.play(.notification)
     }
 
     func buySkin(_ skin: Skin) {

@@ -21,6 +21,14 @@ struct SuccessView: View {
             .buttonStyle(.borderedProminent)
             .tint(.green)
         }
+        .onAppear {
+            if coordinator.isTreasureLevel {
+                coordinator.hapticProvider.play(.success)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    coordinator.hapticProvider.play(.notification)
+                }
+            }
+        }
     }
 }
 
