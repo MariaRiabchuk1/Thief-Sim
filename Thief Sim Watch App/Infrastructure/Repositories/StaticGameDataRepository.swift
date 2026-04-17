@@ -22,9 +22,9 @@ class StaticGameDataRepository: GameDataRepository {
 
     func getSkins() -> [Skin] {
         [
-            Skin(id: .classic, name: "Класика", color: Color(red: 0.2, green: 0.4, blue: 0.8), price: 0, description: "Стандарт"),
-            Skin(id: .ninja, name: "Ніндзя", color: Color(white: 0.1), price: 1500, description: "Тінь"),
-            Skin(id: .neon, name: "Неон", color: .green, price: 5000, description: "Кібер-злодій")
+            Skin(id: .classic, name: "Класика", color: Color(red: 0.2, green: 0.4, blue: 0.8), price: 0, description: "Стандарт", modifier: .none, modifierDescription: "Базовий костюм"),
+            Skin(id: .ninja, name: "Ніндзя", color: Color(white: 0.1), price: 1500, description: "Тінь", modifier: .silentSafeCracking, modifierDescription: "-15% шуму при зламі"),
+            Skin(id: .neon, name: "Неон", color: .green, price: 5000, description: "Кібер-злодій", modifier: .preciseHacking, modifierDescription: "+20% вікно хакінгу")
         ]
     }
 
