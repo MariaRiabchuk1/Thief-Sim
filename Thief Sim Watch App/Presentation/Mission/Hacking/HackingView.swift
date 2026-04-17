@@ -13,7 +13,10 @@ struct HackingView: View {
 
     var body: some View {
         VStack(spacing: 15) {
-            Text("СИГНАЛІЗАЦІЯ").font(.caption).foregroundColor(.red)
+            Text("СИГНАЛІЗАЦІЯ")
+                .font(.system(size: 11, weight: .bold)) // Increased from caption
+                .foregroundColor(.red)
+                .accessibilityAddTraits(.isHeader)
 
             ZStack {
                 Rectangle()
@@ -28,15 +31,19 @@ struct HackingView: View {
                     .frame(width: 4, height: 26)
                     .offset(x: CGFloat(viewModel.hackPosition))
             }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Hacking meter. Target is in the center.")
 
             Button("ХАКНУТИ") { viewModel.performHack() }
                 .buttonStyle(.borderedProminent)
                 .tint(.blue)
+                .accessibilityLabel("Perform hack")
 
             if (viewModel.session.consumables[.emp] ?? 0) > 0 {
                 Button("ЕМІ (-1)") { viewModel.useEMP() }
-                    .font(.caption2)
+                    .font(.system(size: 10)) // 9pt floor
                     .foregroundColor(.orange)
+                    .accessibilityLabel("Use EMP. You have \(viewModel.session.consumables[.emp, default: 0]) left.")
             }
         }
         .onReceive(tick) { _ in viewModel.tick() }

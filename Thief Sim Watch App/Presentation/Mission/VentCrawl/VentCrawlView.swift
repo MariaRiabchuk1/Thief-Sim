@@ -113,9 +113,13 @@ private struct HUD: View {
     var body: some View {
         VStack {
             HStack {
-                Text("LVL \(level)").font(.system(size: 8, weight: .black))
+                Text("LVL \(level)")
+                    .font(.system(size: 9, weight: .black)) // 9pt floor
+                    .accessibilityLabel("Current level \(level)")
                 Spacer()
-                Text("\(Int(progress * 100))%").font(.system(size: 8, design: .monospaced))
+                Text("\(Int(progress * 100))%")
+                    .font(.system(size: 9, design: .monospaced)) // 9pt floor
+                    .accessibilityLabel("Mission progress \(Int(progress * 100)) percent")
             }
             .padding(5)
             Spacer()

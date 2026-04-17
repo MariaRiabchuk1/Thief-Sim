@@ -11,15 +11,20 @@ struct SuccessView: View {
             Image(systemName: coordinator.isTreasureLevel ? "sparkles" : "banknote.fill")
                 .font(.largeTitle)
                 .foregroundColor(coordinator.isTreasureLevel ? .yellow : .green)
+                .accessibilityLabel(coordinator.isTreasureLevel ? "Sparkles" : "Banknote")
 
             Text("УСПІХ!").font(.headline)
-            Text("+ $\(reward)").foregroundColor(.green).bold()
+            Text("+ $\(reward)")
+                .foregroundColor(.green)
+                .bold()
+                .accessibilityLabel("Reward \(reward) dollars")
 
             Button("ВТІКТИ") {
                 coordinator.finish(success: true)
             }
             .buttonStyle(.borderedProminent)
             .tint(.green)
+            .accessibilityLabel("Escape and collect reward")
         }
         .onAppear {
             if coordinator.isTreasureLevel {
@@ -41,14 +46,18 @@ struct CaughtView: View {
             Image(systemName: "hand.raised.slash.fill")
                 .font(.largeTitle)
                 .foregroundColor(.red)
+                .accessibilityHidden(true)
 
-            Text("ВАС СПІЙМАНО!").font(.headline)
+            Text("ВАС СПІЙМАНО!")
+                .font(.headline)
+                .accessibilityLabel("You were caught!")
 
             Button("ЗДАТИСЯ") {
                 coordinator.finish(success: false)
             }
             .buttonStyle(.borderedProminent)
             .tint(.red)
+            .accessibilityLabel("Surrender and lose half your money")
         }
     }
 }

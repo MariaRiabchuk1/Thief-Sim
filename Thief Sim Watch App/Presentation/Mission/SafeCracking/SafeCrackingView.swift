@@ -64,6 +64,7 @@ private struct Header: View {
                 Text("\(coordinator.timeRemaining)с")
                     .font(.system(size: 11, weight: .bold))
                     .foregroundColor(coordinator.timeRemaining < 10 ? .red : .orange)
+                    .accessibilityLabel("Time remaining \(coordinator.timeRemaining) seconds")
             }
 
             if (coordinator.session.consumables[.smokeBomb] ?? 0) > 0 {
@@ -71,20 +72,24 @@ private struct Header: View {
                     HStack(spacing: 2) {
                         Image(systemName: "wind")
                         Text("\(coordinator.session.consumables[.smokeBomb, default: 0])")
-                            .font(.system(size: 8))
+                            .font(.system(size: 9)) // 9pt floor
                     }
                 }
                 .buttonStyle(.plain)
                 .foregroundColor(.gray)
+                .accessibilityLabel("Use smoke bomb. You have \(coordinator.session.consumables[.smokeBomb, default: 0])")
             }
 
             Spacer()
             Image(systemName: "heart.fill")
                 .foregroundColor(.red)
                 .scaleEffect(1.0 + coordinator.detectionLevel * 0.4)
+                .accessibilityLabel("Health")
+                .accessibilityValue("\(Int((1.0 - coordinator.detectionLevel) * 100)) percent")
             Spacer()
             Image(systemName: coordinator.isPatrolActive ? "eye.trianglebadge.exclamationmark.fill" : "eye.fill")
                 .foregroundColor(coordinator.isPatrolActive ? .red : (coordinator.detectionLevel > 0.7 ? .orange : .blue.opacity(0.5)))
+                .accessibilityLabel(coordinator.isPatrolActive ? "Patrol active! Don't move." : "Patrol is away")
         }
         .padding(.horizontal, 10)
         .padding(.top, 5)
@@ -104,11 +109,14 @@ private struct Footer: View {
                         .frame(width: 5, height: 5)
                 }
             }
+            .accessibilityLabel("Combination progress: \(coordinator.currentStep) of \(coordinator.district.codeLength) steps complete")
+            
             if !coordinator.isLockStuck {
                 Button("ЗЛАМАТИ", action: onCrack)
                     .buttonStyle(.bordered)
                     .tint(.blue)
                     .controlSize(.small)
+                    .accessibilityLabel("Try to crack the safe")
             }
         }
         .padding(.bottom, 5)
@@ -122,8 +130,10 @@ private struct StuckLockView: View {
                 .font(.system(size: 14, weight: .black))
                 .foregroundColor(.orange)
             Text("ТАПАЙ ШВИДКО")
-                .font(.system(size: 8))
+                .font(.system(size: 9)) // 9pt floor
         }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Lock is stuck! Tap quickly to release.")
     }
 }
 

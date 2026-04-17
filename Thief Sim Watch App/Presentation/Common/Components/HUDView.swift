@@ -12,10 +12,12 @@ struct HUDView: View {
                 Text("$\(money)")
                     .foregroundColor(.yellow)
                     .bold()
+                    .accessibilityLabel("Balance \(money) dollars")
                 Text(rank)
-                    .font(.system(size: 7))
+                    .font(.system(size: 9)) // 9pt floor
                     .foregroundColor(.blue)
                     .italic()
+                    .accessibilityLabel("Rank \(rank)")
             }
             Spacer()
             Button(action: onShopTap) {
@@ -23,6 +25,7 @@ struct HUDView: View {
                     .foregroundColor(.white)
             }
             .buttonStyle(.plain)
+            .accessibilityLabel("Open Shop")
             .padding(5)
             .background(Color.blue.opacity(0.3))
             .cornerRadius(5)

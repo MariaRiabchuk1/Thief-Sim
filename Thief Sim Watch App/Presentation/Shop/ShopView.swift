@@ -9,14 +9,16 @@ struct ShopView: View {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: -1) {
                     Text("$\(viewModel.session.totalMoney)")
-                        .font(.system(size: 13, weight: .bold))
+                        .font(.system(size: 14, weight: .bold))
                         .foregroundStyle(.yellow)
+                        .accessibilityLabel("Balance \(viewModel.session.totalMoney) dollars")
                     Text(viewModel.session.playerRank)
-                        .font(.system(size: 8))
+                        .font(.system(size: 9))
                         .foregroundStyle(.blue)
                         .italic()
                         .lineLimit(1)
                         .truncationMode(.tail)
+                        .accessibilityLabel("Rank \(viewModel.session.playerRank)")
                 }
                 Spacer()
             }
@@ -34,19 +36,20 @@ struct ShopView: View {
                         .contentShape(Circle())
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel("Back to Map")
                 Spacer()
             }
             .padding(.leading, 4)
             .padding(.top, 2)
 
             List {
-                Section(header: Text("АКСЕСУАРИ").font(.system(size: 8))) {
+                Section(header: Text("АКСЕСУАРИ").font(.system(size: 9))) {
                     ForEach(viewModel.session.accessories) { acc in
                         AccessoryRow(accessory: acc, viewModel: viewModel)
                     }
                 }
 
-                Section(header: Text("ГАДЖЕТИ").font(.system(size: 8))) {
+                Section(header: Text("ГАДЖЕТИ").font(.system(size: 9))) {
                     ForEach(viewModel.session.shopItems) { item in
                         UpgradeRow(item: item, viewModel: viewModel)
                     }
@@ -66,11 +69,16 @@ private struct AccessoryRow: View {
         let isEquipped = viewModel.session.currentAccessoryName == accessory.name
 
         HStack {
-            Text(accessory.icon).font(.system(size: 14))
+            Text(accessory.icon)
+                .font(.system(size: 14))
+                .accessibilityHidden(true)
             VStack(alignment: .leading) {
                 Text(accessory.name).font(.system(size: 10, weight: .bold))
                 if !isOwned {
-                    Text("$\(accessory.price)").font(.system(size: 8)).foregroundColor(.yellow)
+                    Text("$\(accessory.price)")
+                        .font(.system(size: 9))
+                        .foregroundColor(.yellow)
+                        .accessibilityLabel("Price \(accessory.price) dollars")
                 }
             }
             Spacer()
@@ -82,6 +90,7 @@ private struct AccessoryRow: View {
             }
             .buttonStyle(.plain)
             .disabled(isEquipped || (!isOwned && viewModel.session.totalMoney < accessory.price))
+            .accessibilityLabel(isEquipped ? "Equipped" : (isOwned ? "Equip \(accessory.name)" : "Buy \(accessory.name) for \(accessory.price) dollars"))
         }
     }
 }
@@ -97,23 +106,29 @@ private struct UpgradeRow: View {
         HStack {
             VStack(alignment: .leading) {
                 Text(item.name).font(.system(size: 10, weight: .bold))
-                Text("$\(item.price)").font(.system(size: 8)).foregroundColor(.yellow)
+                Text("$\(item.price)")
+                    .font(.system(size: 9))
+                    .foregroundColor(.yellow)
+                    .accessibilityLabel("Price \(item.price) dollars")
             }
             Spacer()
             Button(action: { viewModel.showInfo(item) }) {
-                Image(systemName: "info.circle").foregroundColor(.blue)
+                Image(systemName: "info.circle")
+                    .foregroundColor(.blue)
+                    .accessibilityLabel("Item Information")
             }
             .buttonStyle(.plain)
             .padding(.trailing, 5)
 
             Button(action: { viewModel.buyUpgrade(item) }) {
                 Text(item.isConsumable ? "+\(count)" : (isOwned ? "КУПЛЕНО" : "КУПИТИ"))
-                    .font(.system(size: 7, weight: .bold))
+                    .font(.system(size: 9, weight: .bold))
                     .padding(4)
                     .background(viewModel.session.totalMoney >= item.price ? Color.blue : Color.gray)
                     .cornerRadius(4)
             }
             .disabled(!item.isConsumable && isOwned || viewModel.session.totalMoney < item.price)
+            .accessibilityLabel(item.isConsumable ? "You have \(count). Buy more for \(item.price) dollars" : (isOwned ? "Already owned" : "Buy \(item.name) for \(item.price) dollars"))
         }
     }
 }
@@ -125,12 +140,12 @@ private struct ActionLabel: View {
 
     var body: some View {
         if isEquipped {
-            Text("ОДЯГНУТО").font(.system(size: 7, weight: .bold)).foregroundColor(.green)
+            Text("ОДЯГНУТО").font(.system(size: 9, weight: .bold)).foregroundColor(.green)
         } else if isOwned {
-            Text("ОДЯГТИ").font(.system(size: 7, weight: .bold)).foregroundColor(.white)
+            Text("ОДЯГТИ").font(.system(size: 9, weight: .bold)).foregroundColor(.white)
         } else {
             Text("КУПИТИ")
-                .font(.system(size: 7, weight: .bold))
+                .font(.system(size: 9, weight: .bold))
                 .padding(4)
                 .background(canAfford ? Color.blue : Color.gray)
                 .cornerRadius(4)
