@@ -4,12 +4,12 @@ import Foundation
 struct PlayerProgress: Codable {
     let totalMoney: Int
     let totalEarnings: Int
-    let unlockedDistricts: Set<String>
+    let unlockedDistricts: Set<DistrictID>
     let ownedUpgrades: Set<UpgradeID>
-    let ownedSkins: Set<String>
-    let ownedAccessories: Set<String>
+    let ownedSkins: Set<SkinID>
+    let ownedAccessories: Set<AccessoryID>
     let consumables: [UpgradeID: Int]
-    let districtProgress: [String: Int]
+    let districtProgress: [DistrictID: Int]
     let currentSkinName: String
     let currentAccessoryName: String?
     let seenCoachMarks: Set<String>

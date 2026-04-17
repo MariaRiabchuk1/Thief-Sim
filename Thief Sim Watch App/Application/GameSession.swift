@@ -13,12 +13,12 @@ final class GameSession: ObservableObject {
     @Published var totalEarnings: Int = 0
 
     // Progression
-    @Published var unlockedDistricts: Set<String> = []
+    @Published var unlockedDistricts: Set<DistrictID> = []
     @Published var ownedUpgrades: Set<UpgradeID> = []
-    @Published var ownedSkins: Set<String> = ["Класика"]
-    @Published var ownedAccessories: Set<String> = []
+    @Published var ownedSkins: Set<SkinID> = [.classic]
+    @Published var ownedAccessories: Set<AccessoryID> = []
     @Published var consumables: [UpgradeID: Int] = [.smokeBomb: 0, .emp: 0]
-    @Published var districtProgress: [String: Int] = [:]
+    @Published var districtProgress: [DistrictID: Int] = [:]
     @Published var lastSelectedDistrictId: DistrictID = .outskirts
 
     // Active customization
@@ -55,7 +55,7 @@ final class GameSession: ObservableObject {
         loadProgress()
 
         if unlockedDistricts.isEmpty, let first = districts.first {
-            unlockedDistricts.insert(first.name)
+            unlockedDistricts.insert(first.id)
             lastSelectedDistrictId = first.id
         }
         
@@ -99,7 +99,7 @@ final class GameSession: ObservableObject {
     var currentSkin: Skin { skins.first { $0.name == currentSkinName } ?? skins[0] }
     var currentAccessory: Accessory? { accessories.first { $0.name == currentAccessoryName } }
     var playerRank: String { economyService.getPlayerRank(totalEarnings: totalEarnings) }
-    func level(of district: District) -> Int { districtProgress[district.name, default: 0] }
+    func level(of district: District) -> Int { districtProgress[district.id, default: 0] }
 
     // Sync
     private func syncToComplication() {
@@ -110,7 +110,7 @@ final class GameSession: ObservableObject {
     func unlockDistrict(_ district: District) {
         guard economyService.canUnlockDistrict(totalMoney: totalMoney, district: district) else { return }
         totalMoney -= district.unlockPrice
-        unlockedDistricts.insert(district.name)
+        unlockedDistricts.insert(district.id)
         hapticProvider.play(.notification)
         syncToComplication()
         saveProgress()
@@ -184,7 +184,7 @@ final class GameSession: ObservableObject {
     }
 
     func advanceProgress(in district: District) {
-        districtProgress[district.name, default: 0] += 1
+        districtProgress[district.id, default: 0] += 1
         saveProgress()
     }
 

@@ -27,7 +27,7 @@ final class MapViewModel: ObservableObject {
 
     var currentDistrict: District { session.districts[selectedDistrictIndex] }
     var currentDistrictLevel: Int { session.level(of: currentDistrict) }
-    var isCurrentDistrictUnlocked: Bool { session.unlockedDistricts.contains(currentDistrict.name) }
+    var isCurrentDistrictUnlocked: Bool { session.unlockedDistricts.contains(currentDistrict.id) }
 
     func unlockDistrict(_ district: District) {
         session.unlockDistrict(district)

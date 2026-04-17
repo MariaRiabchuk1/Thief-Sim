@@ -65,7 +65,7 @@ private struct AccessoryRow: View {
     @ObservedObject var viewModel: ShopViewModel
 
     var body: some View {
-        let isOwned = viewModel.session.ownedAccessories.contains(accessory.name)
+        let isOwned = viewModel.session.ownedAccessories.contains(accessory.id)
         let isEquipped = viewModel.session.currentAccessoryName == accessory.name
 
         HStack {

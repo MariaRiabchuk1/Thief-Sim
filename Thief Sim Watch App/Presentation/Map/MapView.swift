@@ -57,7 +57,7 @@ private struct DistrictCard: View {
 
     var body: some View {
         let district = viewModel.session.districts[index]
-        let isUnlocked = viewModel.session.unlockedDistricts.contains(district.name)
+        let isUnlocked = viewModel.session.unlockedDistricts.contains(district.id)
 
         VStack(spacing: 4) {
             Text(district.name)
@@ -79,7 +79,7 @@ private struct UnlockedDistrictContent: View {
 
     var body: some View {
         VStack(spacing: 4) {
-            Text("Прогрес: Рівень \(viewModel.session.districtProgress[district.name, default: 0] + 1)")
+            Text("Прогрес: Рівень \(viewModel.session.districtProgress[district.id, default: 0] + 1)")
                 .font(.system(size: 9)) // 9pt floor
                 .foregroundColor(.gray)
 
