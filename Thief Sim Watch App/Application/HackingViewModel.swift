@@ -22,12 +22,20 @@ final class HackingViewModel: ObservableObject {
 
     func tick() {
         let speedBoost = Double(coordinator.level) * 0.5
-        hackPosition += (coordinator.district.hackSpeed + speedBoost) * hackDirection
-        if hackPosition > 55 || hackPosition < -55 { hackDirection *= -1 }
+        // Normalize speed to the -1.0...1.0 range. 
+        // Original was roughly -55...55 with speed ~2-6. 
+        let normalizedSpeed = (coordinator.district.hackSpeed + speedBoost) / 100.0
+        
+        hackPosition += normalizedSpeed * hackDirection
+        if hackPosition > 1.0 || hackPosition < -1.0 {
+            hackDirection *= -1
+            hackPosition = max(-1.0, min(1.0, hackPosition))
+        }
     }
 
     func performHack() {
-        if abs(hackPosition) < 15 {
+        // Success if within roughly 25% of center (original 15/55 ≈ 0.27)
+        if abs(hackPosition) < 0.25 {
             coordinator.hapticProvider.play(.start)
             coordinator.advance(to: .safeCracking)
         } else {
