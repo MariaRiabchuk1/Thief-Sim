@@ -50,8 +50,11 @@ final class HackingViewModel: ObservableObject {
     }
 
     func performHack() {
-        // Success if within roughly 25% of center (original 15/55 ≈ 0.27)
-        if abs(hackPosition) < 0.25 {
+        // Neon skin bonus: +20% hack tolerance
+        let tolerance: Double = session.currentSkin.modifier == .preciseHacking ? 0.30 : 0.25
+        
+        // Success if within tolerance zone
+        if abs(hackPosition) < tolerance {
             coordinator.hapticProvider.play(.start)
             coordinator.advance(to: .safeCracking)
         } else {

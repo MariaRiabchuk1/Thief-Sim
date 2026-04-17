@@ -43,6 +43,12 @@ struct ShopView: View {
             .padding(.top, 2)
 
             List {
+                Section(header: Text("СКІНИ").font(.system(size: 9))) {
+                    ForEach(viewModel.session.skins) { skin in
+                        SkinRow(skin: skin, viewModel: viewModel)
+                    }
+                }
+                
                 Section(header: Text("АКСЕСУАРИ").font(.system(size: 9))) {
                     ForEach(viewModel.session.accessories) { acc in
                         AccessoryRow(accessory: acc, viewModel: viewModel)
@@ -149,6 +155,45 @@ private struct ActionLabel: View {
                 .padding(4)
                 .background(canAfford ? Color.blue : Color.gray)
                 .cornerRadius(4)
+        }
+    }
+}
+
+private struct SkinRow: View {
+    let skin: Skin
+    @ObservedObject var viewModel: ShopViewModel
+
+    var body: some View {
+        let isOwned = viewModel.session.ownedSkins.contains(skin.id)
+        let isEquipped = viewModel.session.currentSkinName == skin.name
+
+        HStack {
+            Circle()
+                .fill(skin.color)
+                .frame(width: 14, height: 14)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading) {
+                Text(skin.name).font(.system(size: 10, weight: .bold))
+                Text(skin.modifierDescription)
+                    .font(.system(size: 8))
+                    .foregroundColor(.gray)
+                if !isOwned {
+                    Text("$\(skin.price)")
+                        .font(.system(size: 9))
+                        .foregroundColor(.yellow)
+                        .accessibilityLabel("Price \(skin.price) dollars")
+                }
+            }
+            Spacer()
+            Button(action: {
+                if isOwned { viewModel.equipSkin(skin) }
+                else { viewModel.buySkin(skin) }
+            }) {
+                ActionLabel(isEquipped: isEquipped, isOwned: isOwned, canAfford: viewModel.session.totalMoney >= skin.price)
+            }
+            .buttonStyle(.plain)
+            .disabled(isEquipped || (!isOwned && viewModel.session.totalMoney < skin.price))
+            .accessibilityLabel(isEquipped ? "Equipped" : (isOwned ? "Equip \(skin.name)" : "Buy \(skin.name) for \(skin.price) dollars"))
         }
     }
 }

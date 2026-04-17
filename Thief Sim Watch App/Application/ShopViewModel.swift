@@ -37,6 +37,10 @@ final class ShopViewModel: ObservableObject {
         session.buySkin(skin)
     }
 
+    func equipSkin(_ skin: Skin) {
+        session.currentSkinName = skin.name
+    }
+
     func buyAccessory(_ accessory: Accessory) {
         session.buyAccessory(accessory)
     }

@@ -44,7 +44,9 @@ final class SafeCrackingViewModel: ObservableObject {
 
         if floor(value) != floor(lastFeedbackValue) {
             if coordinator.isPatrolActive {
-                coordinator.detectionLevel += 0.4
+                // Ninja skin bonus: 15% slower detection
+                let penalty = session.currentSkin.modifier == .silentSafeCracking ? 0.34 : 0.40
+                coordinator.detectionLevel += penalty
                 coordinator.hapticProvider.play(.failure)
             } else if distance <= tolerance * boost {
                 coordinator.hapticProvider.play(.notification)
