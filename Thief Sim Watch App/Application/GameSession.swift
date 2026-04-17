@@ -19,6 +19,7 @@ final class GameSession: ObservableObject {
     @Published var ownedAccessories: Set<String> = []
     @Published var consumables: [UpgradeID: Int] = [.smokeBomb: 0, .emp: 0]
     @Published var districtProgress: [String: Int] = [:]
+    @Published var lastSelectedDistrictId: DistrictID = .outskirts
 
     // Active customization
     @Published var currentSkinName: String = "Класика"
@@ -48,7 +49,11 @@ final class GameSession: ObservableObject {
 
         if let first = districts.first {
             self.unlockedDistricts.insert(first.name)
+            self.lastSelectedDistrictId = first.id
         }
+        
+        // Initial sync to complication.
+        syncToComplication()
     }
 
     // Lookups
@@ -57,12 +62,18 @@ final class GameSession: ObservableObject {
     var playerRank: String { economyService.getPlayerRank(totalEarnings: totalEarnings) }
     func level(of district: District) -> Int { districtProgress[district.name, default: 0] }
 
+    // Sync
+    private func syncToComplication() {
+        ComplicationDataService.shared.save(balance: totalMoney, districtId: lastSelectedDistrictId)
+    }
+
     // Economy
     func unlockDistrict(_ district: District) {
         guard economyService.canUnlockDistrict(totalMoney: totalMoney, district: district) else { return }
         totalMoney -= district.unlockPrice
         unlockedDistricts.insert(district.name)
         hapticProvider.play(.notification)
+        syncToComplication()
     }
 
     func buySkin(_ skin: Skin) {
@@ -71,6 +82,7 @@ final class GameSession: ObservableObject {
         ownedSkins.insert(skin.name)
         currentSkinName = skin.name
         hapticProvider.play(.success)
+        syncToComplication()
     }
 
     func buyAccessory(_ accessory: Accessory) {
@@ -79,6 +91,7 @@ final class GameSession: ObservableObject {
         ownedAccessories.insert(accessory.name)
         currentAccessoryName = accessory.name
         hapticProvider.play(.success)
+        syncToComplication()
     }
 
     func buyUpgrade(_ item: Upgrade) {
@@ -90,6 +103,7 @@ final class GameSession: ObservableObject {
             ownedUpgrades.insert(item.id)
         }
         hapticProvider.play(.success)
+        syncToComplication()
     }
 
     func bribePrice(for district: District) -> Int {
@@ -101,21 +115,25 @@ final class GameSession: ObservableObject {
         guard totalMoney >= price else { return false }
         totalMoney -= price
         hapticProvider.play(.success)
+        syncToComplication()
         return true
     }
 
     func applyUpkeep() {
         let upkeep = economyService.getUpkeepCost(unlockedDistrictsCount: unlockedDistricts.count)
         totalMoney = max(0, totalMoney - upkeep)
+        syncToComplication()
     }
 
     func addReward(_ amount: Int) {
         totalMoney += amount
         totalEarnings += amount
+        syncToComplication()
     }
 
     func halveMoney() {
         totalMoney /= 2
+        syncToComplication()
     }
 
     func advanceProgress(in district: District) {
@@ -126,6 +144,12 @@ final class GameSession: ObservableObject {
     func consume(_ id: UpgradeID) -> Bool {
         guard (consumables[id] ?? 0) > 0 else { return false }
         consumables[id]! -= 1
+        syncToComplication()
         return true
+    }
+    
+    func selectDistrict(_ id: DistrictID) {
+        lastSelectedDistrictId = id
+        syncToComplication()
     }
 }

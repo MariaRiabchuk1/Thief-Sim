@@ -36,7 +36,10 @@ struct MapView: View {
             .padding(.horizontal, 8)
             .padding(.top, 10) // More space from the top clock
 
-            TabView(selection: $viewModel.selectedDistrictIndex) {
+            TabView(selection: Binding(
+                get: { viewModel.selectedDistrictIndex },
+                set: { viewModel.didSelectDistrict(at: $0) }
+            )) {
                 ForEach(0..<viewModel.session.districts.count, id: \.self) { index in
                     DistrictCard(index: index, viewModel: viewModel)
                         .tag(index)
