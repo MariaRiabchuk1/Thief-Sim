@@ -32,6 +32,7 @@ final class MissionCoordinator: ObservableObject {
     let hapticProvider: HapticProvider
     let audioProvider: AudioProvider
     let persistenceService: MissionPersistenceService
+    let clock: GameClock
 
     private var cancellables = Set<AnyCancellable>()
 
@@ -43,7 +44,8 @@ final class MissionCoordinator: ObservableObject {
         missionService: MissionService = GameMissionService(),
         hapticProvider: HapticProvider = WatchHapticProvider(),
         audioProvider: AudioProvider = WatchAudioProvider(),
-        persistenceService: MissionPersistenceService = .shared
+        persistenceService: MissionPersistenceService = .shared,
+        clock: GameClock = SystemGameClock()
     ) {
         self.session = session
         self.router = router
@@ -53,6 +55,7 @@ final class MissionCoordinator: ObservableObject {
         self.hapticProvider = hapticProvider
         self.audioProvider = audioProvider
         self.persistenceService = persistenceService
+        self.clock = clock
         
         session.objectWillChange
             .sink { [weak self] _ in self?.objectWillChange.send() }
@@ -67,7 +70,8 @@ final class MissionCoordinator: ObservableObject {
         missionService: MissionService = GameMissionService(),
         hapticProvider: HapticProvider = WatchHapticProvider(),
         audioProvider: AudioProvider = WatchAudioProvider(),
-        persistenceService: MissionPersistenceService = .shared
+        persistenceService: MissionPersistenceService = .shared,
+        clock: GameClock = SystemGameClock()
     ) {
         guard let district = session.districts.first(where: { $0.id == snapshot.districtId }) else { return nil }
         
@@ -79,7 +83,8 @@ final class MissionCoordinator: ObservableObject {
             missionService: missionService,
             hapticProvider: hapticProvider,
             audioProvider: audioProvider,
-            persistenceService: persistenceService
+            persistenceService: persistenceService,
+            clock: clock
         )
         
         self.detectionLevel = snapshot.detectionLevel

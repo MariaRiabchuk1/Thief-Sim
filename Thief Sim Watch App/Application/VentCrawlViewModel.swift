@@ -8,6 +8,7 @@ import WatchKit
 /// `VentCrawlEngine`. Reads shared mission context through the coordinator.
 final class VentCrawlViewModel: ObservableObject {
     let coordinator: MissionCoordinator
+    let clock: GameClock
 
     @Published var state: VentCrawlState = VentCrawlState(playerX: 0.5)
 
@@ -16,10 +17,12 @@ final class VentCrawlViewModel: ObservableObject {
 
     init(
         coordinator: MissionCoordinator,
-        engine: VentCrawlEngine = GameVentCrawlEngine()
+        engine: VentCrawlEngine = GameVentCrawlEngine(),
+        clock: GameClock = SystemGameClock()
     ) {
         self.coordinator = coordinator
         self.engine = engine
+        self.clock = clock
         coordinator.objectWillChange
             .sink { [weak self] _ in self?.objectWillChange.send() }
             .store(in: &cancellables)

@@ -12,8 +12,6 @@ struct VentCrawlView: View {
         _viewModel = StateObject(wrappedValue: VentCrawlViewModel(coordinator: coordinator))
     }
 
-    private let tick = Timer.publish(every: 0.05, on: .main, in: .common).autoconnect()
-
     var body: some View {
         ZStack {
             GeometryReader { geo in
@@ -72,7 +70,13 @@ struct VentCrawlView: View {
         .onAppear {
             viewModel.state.playerX = 0.5
         }
-        .onReceive(tick) { _ in viewModel.tick() }
+        .task {
+            // Local 50ms ticker driven by the clock abstraction.
+            while !Task.isCancelled {
+                viewModel.tick()
+                try? await viewModel.clock.sleep(seconds: 0.05)
+            }
+        }
     }
 }
 
