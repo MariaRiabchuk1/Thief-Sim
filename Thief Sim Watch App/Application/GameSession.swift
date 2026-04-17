@@ -3,6 +3,10 @@ import Combine
 import WatchKit
 
 /// Cross-cutting player progression and catalog data.
+///
+/// Owns everything that persists across screens and survives a mission: money,
+/// unlocks, purchased upgrades, customization, and the static catalogs the UI
+/// reads from. Mission-scoped or minigame-scoped state does NOT belong here.
 final class GameSession: ObservableObject {
     // Economy
     @Published var totalMoney: Int = 0
@@ -31,24 +35,24 @@ final class GameSession: ObservableObject {
     // Dependencies
     private let economyService: EconomyService
     private let hapticProvider: HapticProvider
-    private let persistence: SessionPersistenceService
+    private let progressRepository: ProgressRepository
 
     init(
         dataRepository: GameDataRepository = StaticGameDataRepository(),
         economyService: EconomyService = GameEconomyService(),
         hapticProvider: HapticProvider = WatchHapticProvider(),
-        persistence: SessionPersistenceService = .shared
+        progressRepository: ProgressRepository = UserDefaultsProgressRepository()
     ) {
         self.economyService = economyService
         self.hapticProvider = hapticProvider
-        self.persistence = persistence
+        self.progressRepository = progressRepository
         
         self.districts = dataRepository.getDistricts()
         self.shopItems = dataRepository.getShopItems()
         self.skins = dataRepository.getSkins()
         self.accessories = dataRepository.getAccessories()
 
-        loadSession()
+        loadProgress()
 
         if unlockedDistricts.isEmpty, let first = districts.first {
             unlockedDistricts.insert(first.name)
@@ -59,8 +63,8 @@ final class GameSession: ObservableObject {
     }
 
     // Persist
-    private func saveSession() {
-        let snapshot = GameSessionSnapshot(
+    private func saveProgress() {
+        let snapshot = PlayerProgress(
             totalMoney: totalMoney,
             totalEarnings: totalEarnings,
             unlockedDistricts: unlockedDistricts,
@@ -73,11 +77,11 @@ final class GameSession: ObservableObject {
             currentAccessoryName: currentAccessoryName,
             seenCoachMarks: seenCoachMarks
         )
-        persistence.save(snapshot)
+        progressRepository.save(snapshot)
     }
 
-    private func loadSession() {
-        guard let snapshot = persistence.load() else { return }
+    private func loadProgress() {
+        guard let snapshot = progressRepository.load() else { return }
         self.totalMoney = snapshot.totalMoney
         self.totalEarnings = snapshot.totalEarnings
         self.unlockedDistricts = snapshot.unlockedDistricts
@@ -109,27 +113,27 @@ final class GameSession: ObservableObject {
         unlockedDistricts.insert(district.name)
         hapticProvider.play(.notification)
         syncToComplication()
-        saveSession()
+        saveProgress()
     }
 
     func buySkin(_ skin: Skin) {
         guard economyService.canBuyItem(totalMoney: totalMoney, price: skin.price) else { return }
         totalMoney -= skin.price
-        ownedSkins.insert(skin.name)
+        ownedSkins.insert(skin.id)
         currentSkinName = skin.name
         hapticProvider.play(.success)
         syncToComplication()
-        saveSession()
+        saveProgress()
     }
 
     func buyAccessory(_ accessory: Accessory) {
         guard economyService.canBuyItem(totalMoney: totalMoney, price: accessory.price) else { return }
         totalMoney -= accessory.price
-        ownedAccessories.insert(accessory.name)
+        ownedAccessories.insert(accessory.id)
         currentAccessoryName = accessory.name
         hapticProvider.play(.success)
         syncToComplication()
-        saveSession()
+        saveProgress()
     }
 
     func buyUpgrade(_ item: Upgrade) {
@@ -142,7 +146,7 @@ final class GameSession: ObservableObject {
         }
         hapticProvider.play(.success)
         syncToComplication()
-        saveSession()
+        saveProgress()
     }
 
     func bribePrice(for district: District) -> Int {
@@ -155,7 +159,7 @@ final class GameSession: ObservableObject {
         totalMoney -= price
         hapticProvider.play(.success)
         syncToComplication()
-        saveSession()
+        saveProgress()
         return true
     }
 
@@ -163,25 +167,25 @@ final class GameSession: ObservableObject {
         let upkeep = economyService.getUpkeepCost(unlockedDistrictsCount: unlockedDistricts.count)
         totalMoney = max(0, totalMoney - upkeep)
         syncToComplication()
-        saveSession()
+        saveProgress()
     }
 
     func addReward(_ amount: Int) {
         totalMoney += amount
         totalEarnings += amount
         syncToComplication()
-        saveSession()
+        saveProgress()
     }
 
     func halveMoney() {
         totalMoney /= 2
         syncToComplication()
-        saveSession()
+        saveProgress()
     }
 
     func advanceProgress(in district: District) {
         districtProgress[district.name, default: 0] += 1
-        saveSession()
+        saveProgress()
     }
 
     @discardableResult
@@ -189,7 +193,7 @@ final class GameSession: ObservableObject {
         guard (consumables[id] ?? 0) > 0 else { return false }
         consumables[id]! -= 1
         syncToComplication()
-        saveSession()
+        saveProgress()
         return true
     }
     
@@ -200,6 +204,6 @@ final class GameSession: ObservableObject {
 
     func markCoachMarkSeen(_ id: String) {
         seenCoachMarks.insert(id)
-        saveSession()
+        saveProgress()
     }
 }
