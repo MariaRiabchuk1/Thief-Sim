@@ -17,6 +17,10 @@ struct SafeCrackingView: View {
                 let size = min(geo.size.width, geo.size.height)
                 VStack(spacing: 0) {
                     Header(coordinator: coordinator, onSmokeBomb: { viewModel.useSmokeBomb() })
+                    
+                    DetectionBar(level: coordinator.detectionLevel)
+                        .padding(.top, 2)
+
                     Spacer()
 
                     ZStack {
@@ -30,7 +34,7 @@ struct SafeCrackingView: View {
                                 detectionLevel: coordinator.detectionLevel,
                                 isTreasureLevel: coordinator.isTreasureLevel,
                                 hasStethoscope: coordinator.hasStethoscope,
-                                baseSize: size * 0.7
+                                baseSize: size * 0.65 // Slightly smaller to fit the bar
                             )
                         }
                     }
@@ -76,6 +80,26 @@ struct SafeCrackingView: View {
     }
 }
 
+private struct DetectionBar: View {
+    let level: Double
+    
+    var body: some View {
+        GeometryReader { geo in
+            ZStack(alignment: .leading) {
+                Capsule()
+                    .fill(Color.gray.opacity(0.2))
+                Capsule()
+                    .fill(level > 0.7 ? Color.red : Color.orange)
+                    .frame(width: geo.size.width * CGFloat(level))
+            }
+        }
+        .frame(height: 4)
+        .padding(.horizontal, 20)
+        .accessibilityLabel("Detection level")
+        .accessibilityValue("\(Int(level * 100)) percent")
+    }
+}
+
 private struct Header: View {
     @ObservedObject var coordinator: MissionCoordinator
     let onSmokeBomb: () -> Void
@@ -103,18 +127,21 @@ private struct Header: View {
             }
 
             Spacer()
+            
+            // Replaced the pulsing heart with the thin bar above, 
+            // but keeping a small static heart for thematic consistency
             Image(systemName: "heart.fill")
+                .font(.system(size: 10))
                 .foregroundColor(.red)
-                .scaleEffect(1.0 + coordinator.detectionLevel * 0.4)
-                .accessibilityLabel("Health")
-                .accessibilityValue("\(Int((1.0 - coordinator.detectionLevel) * 100)) percent")
+                .accessibilityHidden(true)
+            
             Spacer()
             Image(systemName: coordinator.isPatrolActive ? "eye.trianglebadge.exclamationmark.fill" : "eye.fill")
                 .foregroundColor(coordinator.isPatrolActive ? .red : (coordinator.detectionLevel > 0.7 ? .orange : .blue.opacity(0.5)))
                 .accessibilityLabel(coordinator.isPatrolActive ? "Patrol active! Don't move." : "Patrol is away")
         }
         .padding(.horizontal, 10)
-        .padding(.top, 5)
+        .padding(.top, 2)
     }
 }
 
@@ -171,7 +198,9 @@ private struct TensionShake: ViewModifier {
             content
         } else {
             TimelineView(.periodic(from: .now, by: 0.12)) { context in
-                let seed = Int(context.date.timeIntervalSinceReferenceDate * 10)
+                // Use a safe modulo to prevent Int overflow
+                let time = context.date.timeIntervalSinceReferenceDate
+                let seed = Int((time.truncatingRemainder(dividingBy: 1000000)) * 100)
                 var rng = SeededShakeRNG(seed: UInt64(bitPattern: Int64(seed)))
                 let offset = CGFloat.random(in: -amplitude...amplitude, using: &rng)
                 content.offset(x: offset)
@@ -217,17 +246,28 @@ private struct SafeDialView: View {
                 .fill(RadialGradient(colors: [.gray.opacity(0.2), .black], center: .center, startRadius: 0, endRadius: baseSize / 2))
 
             Circle()
-                .fill(LinearGradient(colors: [.gray, .black], startPoint: .top, endPoint: .bottom))
+                .fill(LinearGradient(
+                    colors: isTreasureLevel ? [.yellow.opacity(0.8), .orange.opacity(0.4), .black] : [.gray, .black],
+                    startPoint: .top,
+                    endPoint: .bottom
+                ))
                 .frame(width: baseSize * 0.75, height: baseSize * 0.75)
                 .rotationEffect(.degrees(crownValue * 3.6))
 
             Rectangle()
-                .fill(resonanceAlpha > 0.8 ? Color.green : Color.red)
+                .fill(resonanceAlpha > 0.8 ? Color.green : (isTreasureLevel ? Color.yellow : Color.red))
                 .frame(width: baseSize * 0.035, height: baseSize * 0.1)
                 .offset(y: -baseSize * 0.33)
                 .rotationEffect(.degrees(crownValue * 3.6))
         }
         .frame(width: baseSize, height: baseSize)
         .modifier(TensionShake(detectionLevel: detectionLevel, active: !isPatrolActive))
+        .overlay {
+            if isTreasureLevel {
+                Circle()
+                    .stroke(Color.yellow.opacity(0.3), lineWidth: 1)
+                    .blur(radius: 2)
+            }
+        }
     }
 }
