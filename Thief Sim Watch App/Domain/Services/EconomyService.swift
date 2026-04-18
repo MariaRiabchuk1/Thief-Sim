@@ -6,6 +6,7 @@ protocol EconomyService {
     func canBuyItem(totalMoney: Int, price: Int) -> Bool
     func getUpkeepCost(unlockedDistrictsCount: Int) -> Int
     func calculateBribePrice(reward: Int) -> Int
+    func calculateBailFee(reward: Int) -> Int
     func getPlayerRank(totalEarnings: Int) -> String
 }
 
@@ -24,6 +25,10 @@ class GameEconomyService: EconomyService {
     
     func calculateBribePrice(reward: Int) -> Int {
         reward / 4
+    }
+    
+    func calculateBailFee(reward: Int) -> Int {
+        reward / 8
     }
     
     func getPlayerRank(totalEarnings: Int) -> String {

@@ -48,6 +48,13 @@ struct EconomyServiceTests {
         #expect(service.getPlayerRank(totalEarnings: 100000) == "Привид (Пентхаус)")
     }
     
+    @Test("Bail fee is exactly 12.5% of reward")
+    func bailFeePricing() {
+        #expect(service.calculateBailFee(reward: 200) == 25)
+        #expect(service.calculateBailFee(reward: 800) == 100)
+        #expect(service.calculateBailFee(reward: 3000) == 375)
+    }
+
     @Test("canBuyItem validates price against money")
     func buyItemValidation() {
         #expect(service.canBuyItem(totalMoney: 50, price: 100) == false)

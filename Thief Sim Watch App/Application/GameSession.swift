@@ -33,7 +33,7 @@ final class GameSession: ObservableObject {
     let accessories: [Accessory]
 
     // Dependencies
-    private let economyService: EconomyService
+    let economyService: EconomyService
     private let hapticProvider: HapticProvider
     private let progressRepository: ProgressRepository
     
@@ -54,7 +54,7 @@ final class GameSession: ObservableObject {
         self.skins = dataRepository.getSkins()
         self.accessories = dataRepository.getAccessories()
 
-        loadProgress()
+        checkBuildAndLoad()
 
         if unlockedDistricts.isEmpty, let first = districts.first {
             unlockedDistricts.insert(first.id)
@@ -63,6 +63,33 @@ final class GameSession: ObservableObject {
         
         isInitialized = true
         syncToComplication()
+    }
+
+    /// Detects if this is a new build/install and resets progress if so.
+    /// Otherwise, loads the saved progression.
+    private func checkBuildAndLoad() {
+        let buildKey = "last_build_date"
+        let currentBuildDate = getBuildDate()
+        let storedBuildDate = UserDefaults.standard.string(forKey: buildKey)
+        
+        if currentBuildDate != storedBuildDate {
+            // New build detected -> Reset progress
+            print("GameSession: New build detected (\(currentBuildDate)). Resetting progress.")
+            UserDefaults.standard.set(currentBuildDate, forKey: buildKey)
+            saveProgress() // Save the "fresh" state
+        } else {
+            // Same build -> Load progress
+            loadProgress()
+        }
+    }
+    
+    private func getBuildDate() -> String {
+        if let infoPath = Bundle.main.path(forResource: "Info", ofType: "plist"),
+           let infoAttr = try? FileManager.default.attributesOfItem(atPath: infoPath),
+           let modificationDate = infoAttr[.modificationDate] as? Date {
+            return "\(modificationDate.timeIntervalSince1970)"
+        }
+        return "unknown"
     }
 
     // Persist
@@ -202,9 +229,16 @@ final class GameSession: ObservableObject {
         saveProgress()
     }
 
-    func halveMoney() {
-        totalMoney /= 2
+    func subtractBailFee(_ amount: Int) {
+        totalMoney = max(0, totalMoney - amount)
         syncToComplication()
+        saveProgress()
+    }
+
+    func removeRandomConsumable() {
+        let available = consumables.filter { $0.value > 0 }.map { $0.key }
+        guard let randomID = available.randomElement() else { return }
+        consumables[randomID, default: 0] -= 1
         saveProgress()
     }
 

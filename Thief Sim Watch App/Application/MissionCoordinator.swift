@@ -195,13 +195,19 @@ final class MissionCoordinator: ObservableObject {
     }
 
     func finish(success: Bool) {
-        session.applyUpkeep()
         if success {
+            session.applyUpkeep()
             let reward = isTreasureLevel ? district.reward * 2 : district.reward
             session.addReward(reward)
             session.advanceProgress(in: district)
         } else {
-            session.halveMoney()
+            // Softened failure penalty:
+            // 1. Fixed fee scaled to district reward
+            let bailFee = session.economyService.calculateBailFee(reward: district.reward)
+            session.subtractBailFee(bailFee)
+            
+            // 2. (Optional) Lose one random consumable
+            session.removeRandomConsumable()
         }
         audioProvider.stopAll()
         router.activeMission = nil
