@@ -19,9 +19,9 @@ struct SafeCrackingView: View {
                     Header(coordinator: coordinator, onSmokeBomb: { viewModel.useSmokeBomb() })
                     
                     DetectionBar(level: coordinator.detectionLevel)
-                        .padding(.top, 2)
+                        .padding(.top, 1)
 
-                    Spacer()
+                    Spacer(minLength: 2)
 
                     ZStack {
                         if coordinator.isLockStuck {
@@ -34,7 +34,7 @@ struct SafeCrackingView: View {
                                 detectionLevel: coordinator.detectionLevel,
                                 isTreasureLevel: coordinator.isTreasureLevel,
                                 hasStethoscope: coordinator.hasStethoscope,
-                                baseSize: size * 0.65 // Slightly smaller to fit the bar
+                                baseSize: size * 0.58 // Reduced from 0.65 to fit buttons on 40mm
                             )
                         }
                     }
@@ -45,7 +45,7 @@ struct SafeCrackingView: View {
                         }
                     }
 
-                    Spacer()
+                    Spacer(minLength: 2)
                     Footer(coordinator: coordinator, onCrack: { viewModel.tryCrackSafe() })
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -93,8 +93,8 @@ private struct DetectionBar: View {
                     .frame(width: geo.size.width * CGFloat(level))
             }
         }
-        .frame(height: 4)
-        .padding(.horizontal, 20)
+        .frame(height: 3) // Thinner
+        .padding(.horizontal, 25)
         .accessibilityLabel("Detection level")
         .accessibilityValue("\(Int(level * 100)) percent")
     }
@@ -108,17 +108,17 @@ private struct Header: View {
         HStack {
             if coordinator.timeRemaining > 0 {
                 Text("\(coordinator.timeRemaining)с")
-                    .font(.system(size: 11, weight: .bold))
+                    .font(.system(size: 10, weight: .bold)) // Shrunk from 11
                     .foregroundColor(coordinator.timeRemaining < 10 ? .red : .orange)
                     .accessibilityLabel("Time remaining \(coordinator.timeRemaining) seconds")
             }
 
             if (coordinator.session.consumables[.smokeBomb] ?? 0) > 0 {
                 Button(action: onSmokeBomb) {
-                    HStack(spacing: 2) {
+                    HStack(spacing: 1) {
                         Image(systemName: "wind")
                         Text("\(coordinator.session.consumables[.smokeBomb, default: 0])")
-                            .font(.system(size: 9)) // 9pt floor
+                            .font(.system(size: 8)) 
                     }
                 }
                 .buttonStyle(.plain)
@@ -128,20 +128,19 @@ private struct Header: View {
 
             Spacer()
             
-            // Replaced the pulsing heart with the thin bar above, 
-            // but keeping a small static heart for thematic consistency
             Image(systemName: "heart.fill")
-                .font(.system(size: 10))
+                .font(.system(size: 9))
                 .foregroundColor(.red)
                 .accessibilityHidden(true)
             
             Spacer()
             Image(systemName: coordinator.isPatrolActive ? "eye.trianglebadge.exclamationmark.fill" : "eye.fill")
+                .font(.system(size: 10))
                 .foregroundColor(coordinator.isPatrolActive ? .red : (coordinator.detectionLevel > 0.7 ? .orange : .blue.opacity(0.5)))
                 .accessibilityLabel(coordinator.isPatrolActive ? "Patrol active! Don't move." : "Patrol is away")
         }
         .padding(.horizontal, 10)
-        .padding(.top, 2)
+        .padding(.top, 1)
     }
 }
 
@@ -150,55 +149,57 @@ private struct Footer: View {
     let onCrack: () -> Void
 
     var body: some View {
-        VStack(spacing: 3) {
-            HStack(spacing: 4) {
+        VStack(spacing: 2) {
+            HStack(spacing: 3) {
                 ForEach(0..<coordinator.district.codeLength, id: \.self) { i in
                     Circle()
                         .fill(i < coordinator.currentStep ? Color.green : Color.gray)
-                        .frame(width: 5, height: 5)
+                        .frame(width: 4, height: 4)
                 }
             }
             .accessibilityLabel("Combination progress: \(coordinator.currentStep) of \(coordinator.district.codeLength) steps complete")
             
             if !coordinator.isLockStuck {
-                Button("ЗЛАМАТИ", action: onCrack)
-                    .buttonStyle(.bordered)
-                    .tint(.blue)
-                    .controlSize(.small)
-                    .accessibilityLabel("Try to crack the safe")
+                Button(action: onCrack) {
+                    Text("ЗЛАМАТИ")
+                        .font(.system(size: 9, weight: .black))
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+                .tint(.blue)
+                .controlSize(.mini) // Smaller button
+                .padding(.horizontal, 20)
+                .accessibilityLabel("Try to crack the safe")
             }
         }
-        .padding(.bottom, 5)
+        .padding(.bottom, 2)
     }
 }
 
 private struct StuckLockView: View {
     var body: some View {
-        VStack {
+        VStack(spacing: 0) {
             Text("ЗАЇЛО!")
-                .font(.system(size: 14, weight: .black))
+                .font(.system(size: 12, weight: .black))
                 .foregroundColor(.orange)
             Text("ТАПАЙ ШВИДКО")
-                .font(.system(size: 9)) // 9pt floor
+                .font(.system(size: 8))
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Lock is stuck! Tap quickly to release.")
     }
 }
 
-/// Clock-driven shake so it doesn't re-roll the offset on every crown tick.
-/// Kicks in only past a detection floor, so calm play is rock-steady.
 private struct TensionShake: ViewModifier {
     let detectionLevel: Double
     let active: Bool
 
     func body(content: Content) -> some View {
-        let amplitude = max(0, (detectionLevel - 0.5) * 10)
+        let amplitude = max(0, (detectionLevel - 0.5) * 8)
         if !active || amplitude == 0 {
             content
         } else {
             TimelineView(.periodic(from: .now, by: 0.12)) { context in
-                // Use a safe modulo to prevent Int overflow
                 let time = context.date.timeIntervalSinceReferenceDate
                 let seed = Int((time.truncatingRemainder(dividingBy: 1000000)) * 100)
                 var rng = SeededShakeRNG(seed: UInt64(bitPattern: Int64(seed)))
