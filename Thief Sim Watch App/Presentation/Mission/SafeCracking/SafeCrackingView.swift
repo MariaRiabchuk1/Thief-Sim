@@ -198,7 +198,9 @@ private struct TensionShake: ViewModifier {
             content
         } else {
             TimelineView(.periodic(from: .now, by: 0.12)) { context in
-                let seed = Int(context.date.timeIntervalSinceReferenceDate * 10)
+                // Use a safe modulo to prevent Int overflow
+                let time = context.date.timeIntervalSinceReferenceDate
+                let seed = Int((time.truncatingRemainder(dividingBy: 1000000)) * 100)
                 var rng = SeededShakeRNG(seed: UInt64(bitPattern: Int64(seed)))
                 let offset = CGFloat.random(in: -amplitude...amplitude, using: &rng)
                 content.offset(x: offset)
