@@ -17,14 +17,14 @@ struct MapView: View {
                 }
             }
             .tabViewStyle(PageTabViewStyle())
-            .padding(.top, 15) // Give some room for the header but let cards center better
+            .padding(.top, 15)
 
             // Floating Header Layer
             HStack(alignment: .center) {
                 Button(action: { viewModel.openShop() }) {
                     Image(systemName: "cart.fill")
                         .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(.blue) // Make icon blue instead of background
+                        .foregroundStyle(.blue)
                         .frame(width: 32, height: 32)
                 }
                 .buttonStyle(.plain)
@@ -43,7 +43,7 @@ struct MapView: View {
                 Spacer()
             }
             .padding(.horizontal, 6)
-            .padding(.top, -4) // Lift it into the safe area/clock zone
+            .padding(.top, -4)
         }
         .ignoresSafeArea(.container, edges: .top)
     }
@@ -59,12 +59,27 @@ private struct DistrictCard: View {
         let isUnlocked = viewModel.session.unlockedDistricts.contains(district.id)
 
         VStack(spacing: 4) {
-            Text(district.name.uppercased())
-                .font(.system(size: 14, weight: .black))
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
-                .padding(.horizontal, 10)
-                .accessibilityAddTraits(.isHeader)
+            ZStack {
+                // Floating Deduction Notice
+                if let deduction = viewModel.session.activeDeduction {
+                    Text("-$\(deduction.amount) \(deduction.reason)")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundColor(.red)
+                        .offset(y: -20)
+                        .transition(.asymmetric(
+                            insertion: .move(edge: .bottom).combined(with: .opacity),
+                            removal: .move(edge: .top).combined(with: .opacity)
+                        ))
+                        .zIndex(1)
+                }
+
+                Text(district.name.uppercased())
+                    .font(.system(size: 14, weight: .black))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+                    .padding(.horizontal, 10)
+                    .accessibilityAddTraits(.isHeader)
+            }
 
             if isUnlocked {
                 UnlockedDistrictContent(district: district, viewModel: viewModel)
@@ -73,7 +88,7 @@ private struct DistrictCard: View {
             }
         }
         .frame(maxWidth: .infinity)
-        .padding(.top, 10) // Push card content slightly down to avoid overlapping the floating header
+        .padding(.top, 10)
     }
 }
 

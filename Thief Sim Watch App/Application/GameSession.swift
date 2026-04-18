@@ -7,6 +7,12 @@ final class GameSession: ObservableObject {
     // Economy
     @Published var totalMoney: Int = 0
     @Published var totalEarnings: Int = 0
+    @Published var activeDeduction: MoneyDeduction?
+
+    struct MoneyDeduction: Equatable {
+        let amount: Int
+        let reason: String
+    }
 
     // Progression
     @Published var unlockedDistricts: Set<DistrictID> = []
@@ -66,19 +72,16 @@ final class GameSession: ObservableObject {
     }
 
     /// Detects if this is a new build/install and resets progress if so.
-    /// Otherwise, loads the saved progression.
     private func checkBuildAndLoad() {
         let buildKey = "last_build_date"
         let currentBuildDate = getBuildDate()
         let storedBuildDate = UserDefaults.standard.string(forKey: buildKey)
         
         if currentBuildDate != storedBuildDate {
-            // New build detected -> Reset progress
-            print("GameSession: New build detected (\(currentBuildDate)). Resetting progress.")
+            print("GameSession: New build detected. Resetting progress.")
             UserDefaults.standard.set(currentBuildDate, forKey: buildKey)
-            saveProgress() // Save the "fresh" state
+            saveProgress() 
         } else {
-            // Same build -> Load progress
             loadProgress()
         }
     }
@@ -113,15 +116,10 @@ final class GameSession: ObservableObject {
     }
 
     private func loadProgress() {
-        guard let snapshot = progressRepository.load() else { 
-            print("GameSession: No saved progress found, starting fresh.")
-            return 
-        }
+        guard let snapshot = progressRepository.load() else { return }
         
         self.totalMoney = snapshot.totalMoney
         self.totalEarnings = snapshot.totalEarnings
-        
-        // Robust mapping with string fallback
         self.unlockedDistricts = Set(snapshot.unlockedDistricts.compactMap { DistrictID(rawValue: $0) })
         self.ownedUpgrades = Set(snapshot.ownedUpgrades.compactMap { UpgradeID(rawValue: $0) })
         self.ownedSkins = Set(snapshot.ownedSkins.compactMap { SkinID(rawValue: $0) })
@@ -143,9 +141,7 @@ final class GameSession: ObservableObject {
         self.currentAccessoryName = snapshot.currentAccessoryName
         self.seenCoachMarks = Set(snapshot.seenCoachMarks)
         
-        // Ensure standard skin is always owned
         self.ownedSkins.insert(.classic)
-        print("GameSession: Progress loaded successfully. Money: $\(totalMoney)")
     }
 
     // Lookups
@@ -157,6 +153,19 @@ final class GameSession: ObservableObject {
     private func syncToComplication() {
         ComplicationDataService.shared.save(balance: totalMoney, districtId: lastSelectedDistrictId)
     }
+    
+    private func triggerDeductionNotice(amount: Int, reason: String) {
+        // Ensure UI updates on main thread
+        DispatchQueue.main.async {
+            self.activeDeduction = MoneyDeduction(amount: amount, reason: reason)
+            // Auto-clear after 3 seconds
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) { [weak self] in
+                if self?.activeDeduction?.amount == amount {
+                    self?.activeDeduction = nil
+                }
+            }
+        }
+    }
 
     // Economy
     func unlockDistrict(_ district: District) {
@@ -166,6 +175,7 @@ final class GameSession: ObservableObject {
         hapticProvider.play(.notification)
         syncToComplication()
         saveProgress()
+        triggerDeductionNotice(amount: district.unlockPrice, reason: "Розблокування")
     }
 
     func buySkin(_ skin: Skin) {
@@ -176,6 +186,7 @@ final class GameSession: ObservableObject {
         hapticProvider.play(.success)
         syncToComplication()
         saveProgress()
+        triggerDeductionNotice(amount: skin.price, reason: skin.name)
     }
 
     func buyAccessory(_ accessory: Accessory) {
@@ -186,6 +197,7 @@ final class GameSession: ObservableObject {
         hapticProvider.play(.success)
         syncToComplication()
         saveProgress()
+        triggerDeductionNotice(amount: accessory.price, reason: accessory.name)
     }
 
     func buyUpgrade(_ item: Upgrade) {
@@ -199,6 +211,7 @@ final class GameSession: ObservableObject {
         hapticProvider.play(.success)
         syncToComplication()
         saveProgress()
+        triggerDeductionNotice(amount: item.price, reason: item.name)
     }
 
     func bribePrice(for district: District) -> Int {
@@ -212,14 +225,17 @@ final class GameSession: ObservableObject {
         hapticProvider.play(.success)
         syncToComplication()
         saveProgress()
+        triggerDeductionNotice(amount: price, reason: "Підкуп")
         return true
     }
 
     func applyUpkeep() {
         let upkeep = economyService.getUpkeepCost(unlockedDistrictsCount: unlockedDistricts.count)
+        guard upkeep > 0 else { return }
         totalMoney = max(0, totalMoney - upkeep)
         syncToComplication()
         saveProgress()
+        triggerDeductionNotice(amount: upkeep, reason: "Оренда")
     }
 
     func addReward(_ amount: Int) {
@@ -233,6 +249,7 @@ final class GameSession: ObservableObject {
         totalMoney = max(0, totalMoney - amount)
         syncToComplication()
         saveProgress()
+        triggerDeductionNotice(amount: amount, reason: "Застава")
     }
 
     func removeRandomConsumable() {
@@ -259,7 +276,7 @@ final class GameSession: ObservableObject {
     func selectDistrict(_ id: DistrictID) {
         lastSelectedDistrictId = id
         syncToComplication()
-        saveProgress() // Save last selected district
+        saveProgress()
     }
 
     func markCoachMarkSeen(_ id: String) {
