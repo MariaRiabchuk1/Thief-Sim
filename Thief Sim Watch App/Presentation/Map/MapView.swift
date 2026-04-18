@@ -23,10 +23,9 @@ struct MapView: View {
             HStack(alignment: .center) {
                 Button(action: { viewModel.openShop() }) {
                     Image(systemName: "cart.fill")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(.white)
-                        .frame(width: 30, height: 30)
-                        .background(Color.blue.opacity(0.3), in: Circle())
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(.blue) // Make icon blue instead of background
+                        .frame(width: 32, height: 32)
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Open Shop")
