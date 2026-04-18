@@ -12,7 +12,7 @@ struct MapView: View {
                     Image(systemName: "cart.fill")
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundStyle(.white)
-                        .frame(width: 34, height: 34) // Increased hit target
+                        .frame(width: 32, height: 32)
                         .background(Color.blue.opacity(0.3), in: Circle())
                 }
                 .buttonStyle(.plain)
@@ -24,7 +24,7 @@ struct MapView: View {
                         .foregroundStyle(.yellow)
                         .accessibilityLabel("Balance \(viewModel.session.totalMoney) dollars")
                     Text(viewModel.session.playerRank)
-                        .font(.system(size: 9))
+                        .font(.system(size: 8)) // Scaled down for safe areas
                         .foregroundStyle(.blue)
                         .italic()
                         .lineLimit(1)
@@ -34,7 +34,7 @@ struct MapView: View {
                 Spacer()
             }
             .padding(.horizontal, 8)
-            .padding(.top, 10) // More space from the top clock
+            .padding(.top, 8)
 
             TabView(selection: Binding(
                 get: { viewModel.selectedDistrictIndex },
@@ -60,8 +60,11 @@ private struct DistrictCard: View {
         let isUnlocked = viewModel.session.unlockedDistricts.contains(district.id)
 
         VStack(spacing: 4) {
-            Text(district.name)
-                .font(.headline)
+            Text(district.name.uppercased())
+                .font(.system(size: 14, weight: .black))
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+                .padding(.horizontal, 10)
                 .accessibilityAddTraits(.isHeader)
 
             if isUnlocked {
@@ -70,6 +73,7 @@ private struct DistrictCard: View {
                 LockedDistrictContent(district: district, viewModel: viewModel)
             }
         }
+        .frame(maxWidth: .infinity)
     }
 }
 
@@ -79,16 +83,18 @@ private struct UnlockedDistrictContent: View {
 
     var body: some View {
         VStack(spacing: 4) {
-            Text("Прогрес: Рівень \(viewModel.session.districtProgress[district.id, default: 0] + 1)")
-                .font(.system(size: 9)) // 9pt floor
+            Text("Рівень \(viewModel.session.districtProgress[district.id, default: 0] + 1)")
+                .font(.system(size: 9))
                 .foregroundColor(.gray)
 
             Button(action: { viewModel.toggleBribe() }) {
                 HStack(spacing: 4) {
                     Image(systemName: viewModel.bribeActive ? "hand.thumbsup.fill" : "dollarsign.circle")
                     Text(viewModel.bribeActive ? "ПІДКУПЛЕНО" : "ПІДКУП $\(district.reward/4)")
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
                 }
-                .font(.system(size: 9, weight: .bold)) // Ensure min size
+                .font(.system(size: 9, weight: .bold))
                 .foregroundColor(viewModel.bribeActive ? .green : .white)
             }
             .buttonStyle(.bordered)
@@ -96,11 +102,16 @@ private struct UnlockedDistrictContent: View {
             .controlSize(.small)
             .accessibilityLabel(viewModel.bribeActive ? "Bribe active" : "Pay bribe \(district.reward/4) dollars")
 
-            Button("ПОЧАТИ") { viewModel.startMission() }
-                .buttonStyle(.borderedProminent)
-                .tint(.red)
-                .controlSize(.small)
-                .accessibilityLabel("Start mission in \(district.name)")
+            Button(action: { viewModel.startMission() }) {
+                Text("ПОЧАТИ")
+                    .font(.system(size: 11, weight: .black))
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(.red)
+            .controlSize(.small)
+            .padding(.horizontal, 16)
+            .accessibilityLabel("Start mission in \(district.name)")
         }
     }
 }
@@ -114,14 +125,15 @@ private struct LockedDistrictContent: View {
             Image(systemName: "lock.fill")
                 .foregroundColor(.orange)
                 .accessibilityHidden(true)
-            Text("Ціна: $\(district.unlockPrice)")
-                .font(.system(size: 10, weight: .bold))
+            Text("$\(district.unlockPrice)")
+                .font(.system(size: 11, weight: .bold))
                 .accessibilityLabel("Unlock price \(district.unlockPrice) dollars")
             Button("РОЗБЛОКУВАТИ") { viewModel.unlockDistrict(district) }
                 .buttonStyle(.borderedProminent)
                 .tint(.orange)
                 .disabled(viewModel.session.totalMoney < district.unlockPrice)
                 .controlSize(.small)
+                .padding(.horizontal, 10)
         }
     }
 }
