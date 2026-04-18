@@ -5,37 +5,8 @@ struct MapView: View {
     @ObservedObject var viewModel: MapViewModel
 
     var body: some View {
-        VStack(spacing: 0) {
-            // Header Row
-            HStack(alignment: .center) {
-                Button(action: { viewModel.openShop() }) {
-                    Image(systemName: "cart.fill")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(.white)
-                        .frame(width: 32, height: 32)
-                        .background(Color.blue.opacity(0.3), in: Circle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Open Shop")
-                
-                VStack(alignment: .leading, spacing: -1) {
-                    Text("$\(viewModel.session.totalMoney)")
-                        .font(.system(size: 14, weight: .bold))
-                        .foregroundStyle(.yellow)
-                        .accessibilityLabel("Balance \(viewModel.session.totalMoney) dollars")
-                    Text(viewModel.session.playerRank)
-                        .font(.system(size: 8)) // Scaled down for safe areas
-                        .foregroundStyle(.blue)
-                        .italic()
-                        .lineLimit(1)
-                        .truncationMode(.tail)
-                        .accessibilityLabel("Rank \(viewModel.session.playerRank)")
-                }
-                Spacer()
-            }
-            .padding(.horizontal, 8)
-            .padding(.top, 8)
-
+        ZStack(alignment: .top) {
+            // Content Layer
             TabView(selection: Binding(
                 get: { viewModel.selectedDistrictIndex },
                 set: { viewModel.didSelectDistrict(at: $0) }
@@ -46,7 +17,36 @@ struct MapView: View {
                 }
             }
             .tabViewStyle(PageTabViewStyle())
+            .padding(.top, 15) // Give some room for the header but let cards center better
+
+            // Floating Header Layer
+            HStack(alignment: .center) {
+                Button(action: { viewModel.openShop() }) {
+                    Image(systemName: "cart.fill")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .frame(width: 30, height: 30)
+                        .background(Color.blue.opacity(0.3), in: Circle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Open Shop")
+                
+                VStack(alignment: .leading, spacing: -2) {
+                    Text("$\(viewModel.session.totalMoney)")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(.yellow)
+                    Text(viewModel.session.playerRank)
+                        .font(.system(size: 7))
+                        .foregroundStyle(.blue)
+                        .italic()
+                        .lineLimit(1)
+                }
+                Spacer()
+            }
+            .padding(.horizontal, 6)
+            .padding(.top, -4) // Lift it into the safe area/clock zone
         }
+        .ignoresSafeArea(.container, edges: .top)
     }
 }
 
@@ -74,6 +74,7 @@ private struct DistrictCard: View {
             }
         }
         .frame(maxWidth: .infinity)
+        .padding(.top, 10) // Push card content slightly down to avoid overlapping the floating header
     }
 }
 
@@ -82,13 +83,13 @@ private struct UnlockedDistrictContent: View {
     @ObservedObject var viewModel: MapViewModel
 
     var body: some View {
-        VStack(spacing: 4) {
+        VStack(spacing: 3) {
             Text("Рівень \(viewModel.session.districtProgress[district.id, default: 0] + 1)")
                 .font(.system(size: 9))
                 .foregroundColor(.gray)
 
             Button(action: { viewModel.toggleBribe() }) {
-                HStack(spacing: 4) {
+                HStack(spacing: 3) {
                     Image(systemName: viewModel.bribeActive ? "hand.thumbsup.fill" : "dollarsign.circle")
                     Text(viewModel.bribeActive ? "ПІДКУПЛЕНО" : "ПІДКУП $\(district.reward/4)")
                         .lineLimit(1)
@@ -100,7 +101,6 @@ private struct UnlockedDistrictContent: View {
             .buttonStyle(.bordered)
             .tint(viewModel.bribeActive ? .green : .gray)
             .controlSize(.small)
-            .accessibilityLabel(viewModel.bribeActive ? "Bribe active" : "Pay bribe \(district.reward/4) dollars")
 
             Button(action: { viewModel.startMission() }) {
                 Text("ПОЧАТИ")
@@ -110,8 +110,7 @@ private struct UnlockedDistrictContent: View {
             .buttonStyle(.borderedProminent)
             .tint(.red)
             .controlSize(.small)
-            .padding(.horizontal, 16)
-            .accessibilityLabel("Start mission in \(district.name)")
+            .padding(.horizontal, 12)
         }
     }
 }
@@ -124,16 +123,14 @@ private struct LockedDistrictContent: View {
         VStack(spacing: 5) {
             Image(systemName: "lock.fill")
                 .foregroundColor(.orange)
-                .accessibilityHidden(true)
             Text("$\(district.unlockPrice)")
                 .font(.system(size: 11, weight: .bold))
-                .accessibilityLabel("Unlock price \(district.unlockPrice) dollars")
             Button("РОЗБЛОКУВАТИ") { viewModel.unlockDistrict(district) }
                 .buttonStyle(.borderedProminent)
                 .tint(.orange)
                 .disabled(viewModel.session.totalMoney < district.unlockPrice)
                 .controlSize(.small)
-                .padding(.horizontal, 10)
+                .padding(.horizontal, 8)
         }
     }
 }
