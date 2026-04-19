@@ -17,7 +17,7 @@ struct MapView: View {
                 }
             }
             .tabViewStyle(PageTabViewStyle())
-            .padding(.top, 15)
+            .padding(.top, 18)
 
             // Floating Header Layer
             HStack(alignment: .center) {
@@ -43,18 +43,22 @@ struct MapView: View {
                 
                 Spacer()
                 
-                // Today's Steps in Header
+                // Today's Steps - Adjusted to avoid system clock overlap
                 HStack(spacing: 2) {
                     Image(systemName: "figure.walk")
-                        .font(.system(size: 10))
+                        .font(.system(size: 9))
                     Text("\(viewModel.session.todaySteps)")
-                        .font(.system(size: 10, weight: .medium, design: .monospaced))
+                        .font(.system(size: 9, weight: .medium, design: .monospaced))
                 }
                 .foregroundColor(.green)
-                .padding(.trailing, 4)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 2)
+                .background(Color.black.opacity(0.4), in: Capsule())
+                .padding(.trailing, 30) // Push away from the corner clock
+                .offset(y: 4) // Nudge down slightly
             }
             .padding(.horizontal, 6)
-            .padding(.top, -4)
+            .padding(.top, -2) // Lowered slightly from -4
         }
         .ignoresSafeArea(.container, edges: .top)
         .onAppear {
