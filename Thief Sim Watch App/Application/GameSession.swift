@@ -46,6 +46,7 @@ final class GameSession: ObservableObject {
     private let healthProvider: HealthProvider
     
     private var isInitialized = false
+    private var healthTimer: Timer?
 
     init(
         dataRepository: GameDataRepository = StaticGameDataRepository(),
@@ -73,17 +74,25 @@ final class GameSession: ObservableObject {
         
         isInitialized = true
         syncToComplication()
+        
+        // Start periodic health updates
+        startHealthUpdates()
+    }
+    
+    private func startHealthUpdates() {
         refreshHealthData()
+        healthTimer = Timer.scheduledTimer(withTimeInterval: 10, repeats: true) { [weak self] _ in
+            self?.refreshHealthData()
+        }
     }
     
     func refreshHealthData() {
-        Task {
+        Task { @MainActor in
             do {
                 _ = try await healthProvider.requestAuthorization()
                 let steps = try await healthProvider.getTodaySteps()
-                DispatchQueue.main.async {
-                    self.todaySteps = steps
-                }
+                self.todaySteps = steps
+                print("GameSession: Steps updated -> \(steps)")
             } catch {
                 print("HealthKit Error: \(error)")
             }
