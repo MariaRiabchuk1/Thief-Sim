@@ -3,6 +3,10 @@ import SwiftUI
 /// Main navigation screen showing available districts.
 struct MapView: View {
     @ObservedObject var viewModel: MapViewModel
+    
+    // Timer for alternating between Money and Steps in HUD
+    @State private var showSteps = false
+    private let hudTimer = Timer.publish(every: 5, on: .main, in: .common).autoconnect()
 
     var body: some View {
         ZStack(alignment: .top) {
@@ -17,9 +21,9 @@ struct MapView: View {
                 }
             }
             .tabViewStyle(PageTabViewStyle())
-            .padding(.top, 15)
+            .padding(.top, 18)
 
-            // Floating Header Layer
+            // Floating Header Layer (Alternating HUD)
             HStack(alignment: .center) {
                 Button(action: { viewModel.openShop() }) {
                     Image(systemName: "cart.fill")
@@ -30,22 +34,58 @@ struct MapView: View {
                 .buttonStyle(.plain)
                 .accessibilityLabel("Open Shop")
                 
-                VStack(alignment: .leading, spacing: -2) {
-                    Text("$\(viewModel.session.totalMoney)")
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundStyle(.yellow)
-                    Text(viewModel.session.playerRank)
-                        .font(.system(size: 7))
-                        .foregroundStyle(.blue)
-                        .italic()
-                        .lineLimit(1)
+                ZStack(alignment: .leading) {
+                    if showSteps {
+                        // Steps Display
+                        VStack(alignment: .leading, spacing: -2) {
+                            HStack(spacing: 2) {
+                                Image(systemName: "figure.walk")
+                                    .font(.system(size: 10))
+                                Text("\(viewModel.session.todaySteps)")
+                                    .font(.system(size: 13, weight: .bold))
+                            }
+                            .foregroundStyle(.green)
+                            
+                            Text("КРОКИ ЗА СЬОГОДНІ")
+                                .font(.system(size: 7, weight: .semibold))
+                                .foregroundStyle(.gray)
+                        }
+                        .transition(.asymmetric(insertion: .opacity.combined(with: .move(edge: .bottom)), removal: .opacity.combined(with: .move(edge: .top))))
+                        .onTapGesture {
+                            // Developer Cheat: Add 1000 steps per tap
+                            viewModel.session.todaySteps += 1000
+                        }
+                    } else {
+                        // Money Display
+                        VStack(alignment: .leading, spacing: -2) {
+                            Text("$\(viewModel.session.totalMoney)")
+                                .font(.system(size: 13, weight: .bold))
+                                .foregroundStyle(.yellow)
+                            Text(viewModel.session.playerRank)
+                                .font(.system(size: 7))
+                                .foregroundStyle(.blue)
+                                .italic()
+                                .lineLimit(1)
+                        }
+                        .transition(.asymmetric(insertion: .opacity.combined(with: .move(edge: .bottom)), removal: .opacity.combined(with: .move(edge: .top))))
+                    }
                 }
+                .id(showSteps) // Force transition
+                
                 Spacer()
             }
             .padding(.horizontal, 6)
             .padding(.top, -4)
         }
         .ignoresSafeArea(.container, edges: .top)
+        .onReceive(hudTimer) { _ in
+            withAnimation(.spring(duration: 0.5)) {
+                showSteps.toggle()
+            }
+        }
+        .onAppear {
+            viewModel.session.refreshHealthData()
+        }
     }
 }
 
@@ -60,7 +100,6 @@ private struct DistrictCard: View {
 
         VStack(spacing: 4) {
             ZStack {
-                // Floating Deduction Notice
                 if let deduction = viewModel.session.activeDeduction {
                     Text("-$\(deduction.amount) \(deduction.reason)")
                         .font(.system(size: 10, weight: .bold))
@@ -134,17 +173,35 @@ private struct LockedDistrictContent: View {
     @ObservedObject var viewModel: MapViewModel
 
     var body: some View {
-        VStack(spacing: 5) {
-            Image(systemName: "lock.fill")
-                .foregroundColor(.orange)
-            Text("$\(district.unlockPrice)")
-                .font(.system(size: 11, weight: .bold))
-            Button("РОЗБЛОКУВАТИ") { viewModel.unlockDistrict(district) }
-                .buttonStyle(.borderedProminent)
-                .tint(.orange)
-                .disabled(viewModel.session.totalMoney < district.unlockPrice)
-                .controlSize(.small)
-                .padding(.horizontal, 8)
+        VStack(spacing: 2) {
+            VStack(spacing: 0) {
+                HStack(spacing: 4) {
+                    Image(systemName: "dollarsign.circle.fill")
+                    Text("$\(district.unlockPrice)")
+                }
+                .foregroundColor(viewModel.session.totalMoney >= district.unlockPrice ? .yellow : .gray)
+                
+                HStack(spacing: 4) {
+                    Image(systemName: "figure.walk")
+                    Text("\(district.unlockSteps)")
+                }
+                .foregroundColor(viewModel.session.todaySteps >= district.unlockSteps ? .green : .gray)
+            }
+            .font(.system(size: 10, weight: .bold, design: .monospaced))
+
+            Button(action: { viewModel.unlockDistrict(district) }) {
+                HStack {
+                    Image(systemName: "lock.open.fill")
+                    Text("ВІДКРИТИ")
+                }
+                .font(.system(size: 10, weight: .black))
+                .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(.orange)
+            .disabled(!viewModel.session.economyService.canUnlockDistrict(totalMoney: viewModel.session.totalMoney, currentSteps: viewModel.session.todaySteps, district: district))
+            .controlSize(.small)
+            .padding(.horizontal, 12)
         }
     }
 }
