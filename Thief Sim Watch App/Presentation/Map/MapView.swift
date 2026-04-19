@@ -54,6 +54,10 @@ struct MapView: View {
                 .padding(.horizontal, 6)
                 .padding(.vertical, 2)
                 .background(Color.black.opacity(0.4), in: Capsule())
+                .onTapGesture {
+                    // Developer Cheat: Add 1000 steps per tap
+                    viewModel.session.todaySteps += 1000
+                }
                 .padding(.trailing, 30) // Push away from the corner clock
                 .offset(y: 4) // Nudge down slightly
             }
