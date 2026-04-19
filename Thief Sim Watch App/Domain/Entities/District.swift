@@ -11,4 +11,5 @@ struct District: Identifiable, Equatable {
     let hasPatrol: Bool
     let timeLimit: Int?
     let unlockPrice: Int
+    let unlockSteps: Int
 }

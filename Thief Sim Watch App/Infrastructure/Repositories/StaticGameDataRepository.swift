@@ -5,9 +5,9 @@ import SwiftUI
 class StaticGameDataRepository: GameDataRepository {
     func getDistricts() -> [District] {
         [
-            District(id: .outskirts, name: "Примістя", reward: 200, codeLength: 1, safeTolerance: 3.5, hackSpeed: 2.0, hasPatrol: false, timeLimit: nil, unlockPrice: 0),
-            District(id: .center, name: "Центр", reward: 800, codeLength: 2, safeTolerance: 2.0, hackSpeed: 4.0, hasPatrol: true, timeLimit: 45, unlockPrice: 2000),
-            District(id: .island, name: "Острів", reward: 3000, codeLength: 3, safeTolerance: 1.2, hackSpeed: 6.0, hasPatrol: true, timeLimit: 30, unlockPrice: 10000)
+            District(id: .outskirts, name: "Примістя", reward: 200, codeLength: 1, safeTolerance: 3.5, hackSpeed: 2.0, hasPatrol: false, timeLimit: nil, unlockPrice: 0, unlockSteps: 0),
+            District(id: .center, name: "Центр", reward: 800, codeLength: 2, safeTolerance: 2.0, hackSpeed: 4.0, hasPatrol: true, timeLimit: 45, unlockPrice: 2000, unlockSteps: 3000),
+            District(id: .island, name: "Острів", reward: 3000, codeLength: 3, safeTolerance: 1.2, hackSpeed: 6.0, hasPatrol: true, timeLimit: 30, unlockPrice: 10000, unlockSteps: 7500)
         ]
     }
 

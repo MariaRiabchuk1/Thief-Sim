@@ -2,7 +2,7 @@ import Foundation
 
 /// Business logic for game economy and progression.
 protocol EconomyService {
-    func canUnlockDistrict(totalMoney: Int, district: District) -> Bool
+    func canUnlockDistrict(totalMoney: Int, currentSteps: Int, district: District) -> Bool
     func canBuyItem(totalMoney: Int, price: Int) -> Bool
     func getUpkeepCost(unlockedDistrictsCount: Int) -> Int
     func calculateBribePrice(reward: Int) -> Int
@@ -11,8 +11,8 @@ protocol EconomyService {
 }
 
 class GameEconomyService: EconomyService {
-    func canUnlockDistrict(totalMoney: Int, district: District) -> Bool {
-        totalMoney >= district.unlockPrice
+    func canUnlockDistrict(totalMoney: Int, currentSteps: Int, district: District) -> Bool {
+        totalMoney >= district.unlockPrice && currentSteps >= district.unlockSteps
     }
     
     func canBuyItem(totalMoney: Int, price: Int) -> Bool {

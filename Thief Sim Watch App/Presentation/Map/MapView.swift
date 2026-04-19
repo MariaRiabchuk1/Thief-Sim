@@ -40,12 +40,26 @@ struct MapView: View {
                         .italic()
                         .lineLimit(1)
                 }
+                
                 Spacer()
+                
+                // Today's Steps in Header
+                HStack(spacing: 2) {
+                    Image(systemName: "figure.walk")
+                        .font(.system(size: 10))
+                    Text("\(viewModel.session.todaySteps)")
+                        .font(.system(size: 10, weight: .medium, design: .monospaced))
+                }
+                .foregroundColor(.green)
+                .padding(.trailing, 4)
             }
             .padding(.horizontal, 6)
             .padding(.top, -4)
         }
         .ignoresSafeArea(.container, edges: .top)
+        .onAppear {
+            viewModel.session.refreshHealthData()
+        }
     }
 }
 
@@ -60,7 +74,6 @@ private struct DistrictCard: View {
 
         VStack(spacing: 4) {
             ZStack {
-                // Floating Deduction Notice
                 if let deduction = viewModel.session.activeDeduction {
                     Text("-$\(deduction.amount) \(deduction.reason)")
                         .font(.system(size: 10, weight: .bold))
@@ -134,17 +147,35 @@ private struct LockedDistrictContent: View {
     @ObservedObject var viewModel: MapViewModel
 
     var body: some View {
-        VStack(spacing: 5) {
-            Image(systemName: "lock.fill")
-                .foregroundColor(.orange)
-            Text("$\(district.unlockPrice)")
-                .font(.system(size: 11, weight: .bold))
-            Button("РОЗБЛОКУВАТИ") { viewModel.unlockDistrict(district) }
-                .buttonStyle(.borderedProminent)
-                .tint(.orange)
-                .disabled(viewModel.session.totalMoney < district.unlockPrice)
-                .controlSize(.small)
-                .padding(.horizontal, 8)
+        VStack(spacing: 2) {
+            VStack(spacing: 0) {
+                HStack(spacing: 4) {
+                    Image(systemName: "dollarsign.circle.fill")
+                    Text("$\(district.unlockPrice)")
+                }
+                .foregroundColor(viewModel.session.totalMoney >= district.unlockPrice ? .yellow : .gray)
+                
+                HStack(spacing: 4) {
+                    Image(systemName: "figure.walk")
+                    Text("\(district.unlockSteps)")
+                }
+                .foregroundColor(viewModel.session.todaySteps >= district.unlockSteps ? .green : .gray)
+            }
+            .font(.system(size: 10, weight: .bold, design: .monospaced))
+
+            Button(action: { viewModel.unlockDistrict(district) }) {
+                HStack {
+                    Image(systemName: "lock.open.fill")
+                    Text("ВІДКРИТИ")
+                }
+                .font(.system(size: 10, weight: .black))
+                .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(.orange)
+            .disabled(!viewModel.session.economyService.canUnlockDistrict(totalMoney: viewModel.session.totalMoney, currentSteps: viewModel.session.todaySteps, district: district))
+            .controlSize(.small)
+            .padding(.horizontal, 12)
         }
     }
 }

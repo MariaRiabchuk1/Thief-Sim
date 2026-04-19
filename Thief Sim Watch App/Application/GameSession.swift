@@ -8,6 +8,7 @@ final class GameSession: ObservableObject {
     @Published var totalMoney: Int = 0
     @Published var totalEarnings: Int = 0
     @Published var activeDeduction: MoneyDeduction?
+    @Published var todaySteps: Int = 0
 
     struct MoneyDeduction: Equatable {
         let amount: Int
@@ -42,6 +43,7 @@ final class GameSession: ObservableObject {
     let economyService: EconomyService
     private let hapticProvider: HapticProvider
     private let progressRepository: ProgressRepository
+    private let healthProvider: HealthProvider
     
     private var isInitialized = false
 
@@ -49,11 +51,13 @@ final class GameSession: ObservableObject {
         dataRepository: GameDataRepository = StaticGameDataRepository(),
         economyService: EconomyService = GameEconomyService(),
         hapticProvider: HapticProvider = WatchHapticProvider(),
-        progressRepository: ProgressRepository = UserDefaultsProgressRepository()
+        progressRepository: ProgressRepository = UserDefaultsProgressRepository(),
+        healthProvider: HealthProvider = WatchHealthProvider()
     ) {
         self.economyService = economyService
         self.hapticProvider = hapticProvider
         self.progressRepository = progressRepository
+        self.healthProvider = healthProvider
         
         self.districts = dataRepository.getDistricts()
         self.shopItems = dataRepository.getShopItems()
@@ -69,6 +73,21 @@ final class GameSession: ObservableObject {
         
         isInitialized = true
         syncToComplication()
+        refreshHealthData()
+    }
+    
+    func refreshHealthData() {
+        Task {
+            do {
+                _ = try await healthProvider.requestAuthorization()
+                let steps = try await healthProvider.getTodaySteps()
+                DispatchQueue.main.async {
+                    self.todaySteps = steps
+                }
+            } catch {
+                print("HealthKit Error: \(error)")
+            }
+        }
     }
 
     /// Detects if this is a new build/install and resets progress if so.
@@ -155,10 +174,8 @@ final class GameSession: ObservableObject {
     }
     
     private func triggerDeductionNotice(amount: Int, reason: String) {
-        // Ensure UI updates on main thread
         DispatchQueue.main.async {
             self.activeDeduction = MoneyDeduction(amount: amount, reason: reason)
-            // Auto-clear after 3 seconds
             DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) { [weak self] in
                 if self?.activeDeduction?.amount == amount {
                     self?.activeDeduction = nil
@@ -169,7 +186,7 @@ final class GameSession: ObservableObject {
 
     // Economy
     func unlockDistrict(_ district: District) {
-        guard economyService.canUnlockDistrict(totalMoney: totalMoney, district: district) else { return }
+        guard economyService.canUnlockDistrict(totalMoney: totalMoney, currentSteps: todaySteps, district: district) else { return }
         totalMoney -= district.unlockPrice
         unlockedDistricts.insert(district.id)
         hapticProvider.play(.notification)
